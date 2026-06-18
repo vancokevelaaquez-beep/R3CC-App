@@ -1,0 +1,26 @@
+Skipping dependency validation in offline mode
+Error while reading cache, falling back to a full crawl:
+ Error: Unable to deserialize cloned data.
+    at deserialize (node:v8:469:14)
+    at DiskCacheManager.read (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro-file-map\src\cache\DiskCacheManager.js:62:33)
+    at FileMap.read (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro-file-map\src\index.js:285:14)
+    at C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro-file-map\src\index.js:183:25
+    at DependencyGraph.ready (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro\src\node-haste\DependencyGraph.js:79:5)
+    at Bundler.ready (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro\src\Bundler.js:51:5)
+    at IncrementalBundler.ready (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro\src\IncrementalBundler.js:266:5)
+    at Server.ready (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro\src\Server.js:1204:5)
+Failed to construct transformer:  Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:441:11)
+    at spawn (node:child_process:796:9)
+    at fork (node:child_process:174:10)
+    at ChildProcessWorker.initialize (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\jest-worker\build\workers\ChildProcessWorker.js:144:45)
+    at new ChildProcessWorker (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\jest-worker\build\workers\ChildProcessWorker.js:100:10)
+    at WorkerPool.createWorker (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\jest-worker\build\WorkerPool.js:30:12)
+    at new BaseWorkerPool (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\jest-worker\build\base\BaseWorkerPool.js:55:27)
+    at new WorkerPool (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\jest-worker\build\WorkerPool.js:18:1)
+    at new Worker (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\jest-worker\build\index.js:141:26)
+    at WorkerFarm._makeFarm (C:\Users\vancoke.velasquez\Desktop\R3CC\node_modules\metro\src\DeltaBundler\WorkerFarm.js:66:12) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'spawn'
+}
