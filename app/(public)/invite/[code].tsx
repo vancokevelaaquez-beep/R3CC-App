@@ -1,17 +1,23 @@
 import { Link, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, radii, spacing } from "@/constants/theme";
 
 export default function InviteCodeEntryScreen() {
   const { code } = useLocalSearchParams<{ code?: string }>();
+  const [inputCode, setInputCode] = useState("");
+
+  useEffect(() => {
+    setInputCode(code === "manual" ? "" : code ?? "");
+  }, [code]);
 
   return (
     <View style={styles.screen}>
       <Text style={styles.logo}>R3CC</Text>
       <Text style={styles.title}>Invite Code</Text>
       <Text style={styles.copy}>Enter your member invite code to prefill your application and flag your referral.</Text>
-      <TextInput value={code === "manual" ? "" : code} placeholder="R3CC-AJ-7X" placeholderTextColor={colors.dim} style={styles.input} />
-      <Link href={{ pathname: "/apply" }} asChild>
+      <TextInput value={inputCode} onChangeText={setInputCode} placeholder="R3CC-AJ-7X" placeholderTextColor={colors.dim} style={styles.input} />
+      <Link href={{ pathname: "/apply", params: { referred_by: inputCode } }} asChild>
         <Pressable style={styles.button}><Text style={styles.buttonText}>Continue to Application</Text></Pressable>
       </Link>
     </View>

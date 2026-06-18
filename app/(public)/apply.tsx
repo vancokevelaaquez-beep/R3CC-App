@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { ComponentProps, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { ComponentProps, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, radii, spacing } from "@/constants/theme";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
@@ -7,13 +7,31 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 const levels = ["beginner", "intermediate", "advanced", "elite"];
 
 export default function ApplicationFormScreen() {
+  const { referred_by } = useLocalSearchParams<{ referred_by?: string }>();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "", referred_by: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "", referred_by: referred_by ?? "" });
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (referred_by) {
+      setForm((current) => ({ ...current, referred_by }));
+    }
+  }, [referred_by]);
 
   const setField = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   async function submit() {
+    setError("");
+    if (!form.full_name || !form.email || !form.password || !form.confirm_password) {
+      setError("Please complete all required fields.");
+      return;
+    }
+    if (form.password !== form.confirm_password) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (hasSupabaseConfig) {
@@ -23,6 +41,8 @@ export default function ApplicationFormScreen() {
         await supabase.from("applications").insert({ user_id: data.user?.id, full_name: form.full_name, instagram: form.instagram, riding_level: form.riding_level, weekly_km: form.weekly_km, reason: form.reason, referred_by: form.referred_by, status: "pending" });
       }
       router.replace("/pending");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to submit application.");
     } finally {
       setSubmitting(false);
     }
@@ -58,8 +78,10 @@ export default function ApplicationFormScreen() {
           <Summary label="Level" value={form.riding_level} />
           <Summary label="Weekly" value={`${form.weekly_km} km`} />
           <Summary label="Reason" value={form.reason || "No reason entered"} />
+          <Summary label="Referred by" value={form.referred_by || "None"} />
         </View>
       ) : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={styles.actions}>
         {step > 1 ? <Pressable style={styles.secondary} onPress={() => setStep(step - 1)}><Text style={styles.secondaryText}>Back</Text></Pressable> : null}
         <Pressable style={styles.primary} onPress={step === 3 ? submit : () => setStep(step + 1)} disabled={submitting}>

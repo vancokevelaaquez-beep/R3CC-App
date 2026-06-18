@@ -1,11 +1,31 @@
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useState } from "react";
 import { InviteQuotaBar } from "@/components/InviteQuotaBar";
 import { MemberAvatar } from "@/components/MemberAvatar";
 import { colors, radii, spacing } from "@/constants/theme";
 import { useAuth } from "@/hooks/useAuth";
+import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 
 export default function InviteRiderScreen() {
   const { profile } = useAuth();
+  const [target, setTarget] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  async function sendInvite() {
+    if (!target.trim()) {
+      setStatusMessage("Enter a phone number or email address.");
+      return;
+    }
+
+    const code = profile?.invite_code ?? `R3CC-${profile?.username?.slice(0, 3).toUpperCase() ?? "MEM"}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    if (hasSupabaseConfig && profile?.id) {
+      await supabase.from("invites").insert({ code, created_by: profile.id, used_by: null, created_at: new Date().toISOString() });
+    }
+
+    setStatusMessage(`Invite sent to ${target}`);
+    setTarget("");
+  }
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -13,8 +33,9 @@ export default function InviteRiderScreen() {
       <InviteQuotaBar used={profile?.invites_used ?? 2} quota={profile?.invite_quota ?? 5} />
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Send invite</Text>
-        <TextInput placeholder="Phone or email" placeholderTextColor={colors.dim} style={styles.input} />
-        <Pressable style={styles.button}><Text style={styles.buttonText}>Send</Text></Pressable>
+        <TextInput value={target} onChangeText={setTarget} placeholder="Phone or email" placeholderTextColor={colors.dim} style={styles.input} />
+        {statusMessage ? <Text style={styles.status}>{statusMessage}</Text> : null}
+        <Pressable style={styles.button} onPress={sendInvite}><Text style={styles.buttonText}>Send</Text></Pressable>
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Personal code</Text>
@@ -42,6 +63,7 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.text, fontWeight: "900" },
   code: { color: colors.text, fontSize: 28, fontWeight: "900", letterSpacing: 0 },
   note: { color: colors.muted },
+  status: { color: colors.primary, marginTop: spacing.xs },
   section: { color: colors.text, fontSize: 18, fontWeight: "900" },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surface },
   rowCopy: { flex: 1 },

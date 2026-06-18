@@ -14,7 +14,7 @@ export default function AdminApplicationsScreen() {
       const { data } = await supabase.from("applications").update({ status, reviewed_at: new Date().toISOString() }).eq("id", id).select("user_id").single();
       if (data?.user_id) {
         await supabase.from("profiles").update({ status }).eq("id", data.user_id);
-        await supabase.from("notifications").insert({ user_id: data.user_id, type: status === "approved" ? "approved" : "approved", message: `Application ${status}`, is_read: false });
+        await supabase.from("notifications").insert({ user_id: data.user_id, type: status === "approved" ? "approved" : "declined", message: `Application ${status}`, is_read: false });
       }
     }
   }

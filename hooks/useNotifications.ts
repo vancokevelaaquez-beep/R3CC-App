@@ -36,7 +36,14 @@ export function useNotifications(userId?: string) {
     };
   }, [userId]);
 
+  const markAllRead = async () => {
+    setNotifications((current) => current.map((item) => ({ ...item, is_read: true })));
+    if (hasSupabaseConfig && userId) {
+      await supabase.from("notifications").update({ is_read: true }).eq("user_id", userId);
+    }
+  };
+
   const unreadCount = useMemo(() => notifications.filter((item) => !item.is_read).length, [notifications]);
 
-  return { notifications, unreadCount };
+  return { notifications, unreadCount, markAllRead };
 }

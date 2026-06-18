@@ -72,7 +72,7 @@ export type GroupRide = {
 
 export type Notification = {
   id: string;
-  type: "like" | "comment" | "group_ride" | "approved" | "invite_accepted" | "pr" | "streak";
+  type: "like" | "comment" | "group_ride" | "approved" | "declined" | "invite_accepted" | "pr" | "streak";
   message: string;
   is_read: boolean;
   created_at: string;

@@ -19,7 +19,7 @@ export default function RoutePlanningScreen() {
         </View>
         <Text style={styles.search}>Search destination or route name</Text>
         <Text style={styles.section}>Suggested Routes</Text>
-        {routes.sort((a, b) => Number(b.is_shared) - Number(a.is_shared) || a.distance_km - b.distance_km).map((route) => (
+        {[...routes].sort((a, b) => Number(b.is_shared) - Number(a.is_shared) || a.distance_km - b.distance_km).map((route) => (
           <View key={route.id} style={styles.routeRow}>
             <Text style={styles.routeTitle}>{route.title}</Text>
             <Text style={styles.routeMeta}>{route.distance_km} km | {route.difficulty} | {route.elevation_m} m</Text>
