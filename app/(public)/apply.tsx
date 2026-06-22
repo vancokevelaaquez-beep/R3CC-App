@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { ComponentProps, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, radii, spacing } from "@/constants/theme";
@@ -7,21 +7,11 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 const levels = ["beginner", "intermediate", "advanced", "elite"];
 
 export default function ApplicationFormScreen() {
-  const { referred_by } = useLocalSearchParams<{ referred_by?: string }>();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "", referred_by: referred_by ? referred_by.trim().toUpperCase() : "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [confirmError, setConfirmError] = useState("");
-  const [inviteError, setInviteError] = useState("");
-  const [inviteValid, setInviteValid] = useState(true);
-  const [inviteChecking, setInviteChecking] = useState(false);
-
-  useEffect(() => {
-    if (referred_by) {
-      setForm((current) => ({ ...current, referred_by }));
-    }
-  }, [referred_by]);
 
   useEffect(() => {
     if (form.confirm_password && form.password !== form.confirm_password) {
@@ -31,56 +21,12 @@ export default function ApplicationFormScreen() {
     }
   }, [form.password, form.confirm_password]);
 
-  useEffect(() => {
-    validateInviteCode(form.referred_by);
-  }, [form.referred_by]);
-
-  async function validateInviteCode(code: string) {
-    if (!code) {
-      setInviteValid(true);
-      setInviteError("");
-      return;
-    }
-
-    if (!hasSupabaseConfig) {
-      setInviteValid(true);
-      setInviteError("");
-      return;
-    }
-
-    setInviteChecking(true);
-    const { data, error } = await supabase
-      .from("invites")
-      .select("code, used_by")
-      .eq("code", code)
-      .single();
-    setInviteChecking(false);
-
-    if (error || !data) {
-      setInviteValid(false);
-      setInviteError("Invite code not found.");
-      return;
-    }
-    if (data.used_by) {
-      setInviteValid(false);
-      setInviteError("Invite code has already been used.");
-      return;
-    }
-
-    setInviteValid(true);
-    setInviteError("");
-  }
-
   const setField = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   async function submit() {
     setError("");
     if (!form.full_name || !form.email || !form.password || !form.confirm_password) {
       setError("Please complete all required fields.");
-      return;
-    }
-    if (!inviteValid) {
-      setError(inviteError || "Invalid invite code.");
       return;
     }
     if (form.password !== form.confirm_password) {
@@ -94,13 +40,7 @@ export default function ApplicationFormScreen() {
         const { data, error } = await supabase.auth.signUp({ email: form.email, password: form.password });
         if (error) throw error;
         await supabase.from("profiles").upsert({ id: data.user?.id, full_name: form.full_name, email: form.email, role: "member", status: "pending", riding_level: form.riding_level, weekly_km: form.weekly_km, instagram: form.instagram });
-        await supabase.from("applications").insert({ user_id: data.user?.id, full_name: form.full_name, instagram: form.instagram, riding_level: form.riding_level, weekly_km: form.weekly_km, reason: form.reason, referred_by: form.referred_by, status: "pending" });
-        if (form.referred_by) {
-          await supabase
-            .from("invites")
-            .update({ used_by: data.user?.id, used_at: new Date().toISOString() })
-            .eq("code", form.referred_by);
-        }
+        await supabase.from("applications").insert({ user_id: data.user?.id, full_name: form.full_name, instagram: form.instagram, riding_level: form.riding_level, weekly_km: form.weekly_km, reason: form.reason, status: "pending" });
       }
       router.replace("/pending");
     } catch (err) {
@@ -130,7 +70,6 @@ export default function ApplicationFormScreen() {
           <View style={styles.pills}>{levels.map((level) => <Pressable key={level} style={[styles.level, form.riding_level === level && styles.levelActive]} onPress={() => setField("riding_level", level)}><Text style={styles.levelText}>{level}</Text></Pressable>)}</View>
           <Input label="Weekly km" value={form.weekly_km} onChangeText={(value) => setField("weekly_km", value)} />
           <Input label="Why R3CC?" value={form.reason} onChangeText={(value) => setField("reason", value)} multiline />
-          <Input label="Referred by" value={form.referred_by} onChangeText={(value) => setField("referred_by", value)} errorText={inviteError} />
         </View>
       ) : null}
       {step === 3 ? (
@@ -140,7 +79,6 @@ export default function ApplicationFormScreen() {
           <Summary label="Level" value={form.riding_level} />
           <Summary label="Weekly" value={`${form.weekly_km} km`} />
           <Summary label="Reason" value={form.reason || "No reason entered"} />
-          <Summary label="Referred by" value={form.referred_by || "None"} />
         </View>
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}

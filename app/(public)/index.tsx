@@ -26,9 +26,6 @@ export default function PublicLandingScreen() {
       <Link href="/apply" asChild>
         <Pressable style={styles.cta}><Text style={styles.ctaText}>Apply to Join R3CC</Text></Pressable>
       </Link>
-      <Link href="/invite/manual" asChild>
-        <Pressable><Text style={styles.link}>Have an invite code? Enter it here</Text></Pressable>
-      </Link>
       <Link href="/login" asChild><Text style={styles.smallLink}>Member sign in</Text></Link>
       <Link href="/admin-login" asChild><Text style={styles.smallLink}>Admin access</Text></Link>
     </ScrollView>

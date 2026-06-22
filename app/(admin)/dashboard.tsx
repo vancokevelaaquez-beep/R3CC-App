@@ -1,15 +1,42 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ApplicationCard } from "@/components/ApplicationCard";
 import { colors, radii, spacing } from "@/constants/theme";
+import { useEffect, useState } from "react";
+import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 
 export default function AdminDashboardScreen() {
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [paidCount, setPaidCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadCounts() {
+      if (!hasSupabaseConfig) {
+        setMemberCount(128);
+        setPendingCount(7);
+        setPaidCount(84);
+        return;
+      }
+
+      const { count: members } = await supabase.from("profiles").select("id", { count: "exact", head: true });
+      const { count: pending } = await supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "pending");
+      const { count: paid } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("membership_paid", true);
+
+      setMemberCount(members ?? 0);
+      setPendingCount(pending ?? 0);
+      setPaidCount(paid ?? 0);
+    }
+
+    loadCounts();
+  }, []);
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}><Text style={styles.title}>Admin Panel</Text><Text style={styles.badge}>SHIELD</Text></View>
       <View style={styles.grid}>
-        <Stat label="Members" value="128" />
-        <Stat label="Pending" value="7" hot />
-        <Stat label="Week rides" value="86" />
+        <Stat label="Members" value={memberCount !== null ? String(memberCount) : "…"} />
+        <Stat label="Pending" value={pendingCount !== null ? String(pendingCount) : "…"} hot />
+        <Stat label="Paid" value={paidCount !== null ? String(paidCount) : "…"} />
         <Stat label="Routes" value="24" />
       </View>
       <Text style={styles.section}>Pending Applications</Text>
