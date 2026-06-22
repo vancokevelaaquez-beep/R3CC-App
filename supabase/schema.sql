@@ -180,10 +180,11 @@ create policy "routes approved read" on public.routes for select using (public.i
 create policy "routes own insert" on public.routes for insert with check (created_by = auth.uid() and public.is_approved_member());
 
 create policy "group rides approved read" on public.group_rides for select using (public.is_approved_member() or public.is_admin());
-create policy "group rides own insert" on public.group_rides for insert with check (created_by = auth.uid() and public.is_approved_member());
+create policy "group rides own insert" on public.group_rides for insert with check (created_by = auth.uid() and (public.is_approved_member() or public.is_admin()));
+create policy "group rides admin insert" on public.group_rides for insert with check (created_by = auth.uid() and public.is_admin());
 
 create policy "group ride members approved read" on public.group_ride_members for select using (public.is_approved_member() or public.is_admin());
-create policy "group ride members own upsert" on public.group_ride_members for insert with check (user_id = auth.uid() and public.is_approved_member());
+create policy "group ride members own upsert" on public.group_ride_members for insert with check ((user_id = auth.uid() and public.is_approved_member()) or public.is_admin());
 
 create policy "invites own or admin read" on public.invites for select using (created_by = auth.uid() or used_by = auth.uid() or public.is_admin());
 create policy "invites own insert" on public.invites for insert with check (created_by = auth.uid() and public.is_approved_member());
