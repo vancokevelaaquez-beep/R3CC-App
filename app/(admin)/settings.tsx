@@ -1,7 +1,15 @@
+import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, radii, spacing } from "@/constants/theme";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminSettingsScreen() {
+  const { signOut } = useAuth();
+
+  async function handleLogout() {
+    await signOut();
+    router.replace("/admin-login");
+  }
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Settings</Text>
@@ -16,6 +24,9 @@ export default function AdminSettingsScreen() {
         <TextInput placeholder="Message to all members" placeholderTextColor={colors.dim} style={styles.textarea} multiline />
         <Pressable style={styles.button}><Text style={styles.buttonText}>Send Push Notification</Text></Pressable>
       </View>
+      <Pressable style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
+        <Text style={styles.buttonText}>Logout</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -40,5 +51,6 @@ const styles = StyleSheet.create({
   input: { minHeight: 48, borderRadius: radii.sm, paddingHorizontal: spacing.md, color: colors.text, backgroundColor: colors.surfaceHigh },
   textarea: { minHeight: 110, borderRadius: radii.sm, padding: spacing.md, color: colors.text, backgroundColor: colors.surfaceHigh, textAlignVertical: "top" },
   button: { alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.primary },
+  logoutButton: { backgroundColor: colors.primary, marginTop: spacing.lg },
   buttonText: { color: colors.text, fontWeight: "900" }
 });

@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { colors, radii, spacing } from "@/constants/theme";
@@ -39,6 +39,12 @@ export default function AdminLoginScreen() {
       <TextInput value={password} onChangeText={setPassword} placeholder="Password" placeholderTextColor={colors.dim} style={styles.input} secureTextEntry />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable style={styles.button} onPress={submit}><Text style={styles.buttonText}>Sign In</Text></Pressable>
+
+      <View style={styles.links}>
+        <Link href="/" asChild><Text style={styles.link}>← Back to Home</Text></Link>
+        <Link href="/login" asChild><Text style={styles.smallLink}>Member Sign In</Text></Link>
+        <Link href="/apply" asChild><Text style={styles.smallLink}>Apply to Join</Text></Link>
+      </View>
     </View>
   );
 }
@@ -51,5 +57,8 @@ const styles = StyleSheet.create({
   input: { minHeight: 54, borderRadius: radii.md, paddingHorizontal: spacing.md, color: colors.text, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   button: { alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.primary },
   buttonText: { color: colors.text, fontWeight: "900" },
-  error: { color: colors.primary, textAlign: "center" }
+  error: { color: colors.primary, textAlign: "center" },
+  links: { gap: spacing.sm, marginTop: spacing.lg, alignItems: "center" },
+  link: { color: colors.text, textAlign: "center", fontWeight: "800", fontSize: 16 },
+  smallLink: { color: colors.muted, textAlign: "center", fontSize: 14 }
 });

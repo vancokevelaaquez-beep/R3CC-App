@@ -83,19 +83,29 @@ export function useAuth(): AuthState {
           throw error;
         }
 
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", data.user.id)
-          .single();
+        // Try to fetch profile by auth user id first
+        let profileData = null;
+        let profileError = null;
 
+        ({ data: profileData, error: profileError } = await supabase.from("profiles").select("*").eq("id", data.user.id).single());
+
+        // If no profile found by id, attempt fallback lookup by email (some installs may use email-keyed profiles)
         if (profileError) {
           console.error("Profile fetch error:", profileError);
-          throw new Error(`Profile error: ${profileError.message}`);
+          const userEmail = data.user?.email;
+          if (userEmail) {
+            const { data: byEmail, error: byEmailError } = await supabase.from("profiles").select("*").eq("email", userEmail).single();
+            if (!byEmailError && byEmail) {
+              profileData = byEmail;
+              profileError = null;
+            } else {
+              console.error("Profile fetch by email error:", byEmailError);
+            }
+          }
         }
 
-        if (!profileData) {
-          throw new Error("Profile not found. Admin profile may not be set up in database.");
+        if (profileError || !profileData) {
+          throw new Error(profileError ? `Profile error: ${profileError.message}` : "Profile not found. Admin profile may not be set up in database.");
         }
 
         setProfile(profileData as Profile);
