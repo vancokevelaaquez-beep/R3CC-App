@@ -9,9 +9,13 @@ const levels = ["beginner", "intermediate", "advanced", "elite"];
 export default function ApplicationFormScreen() {
   const { referred_by } = useLocalSearchParams<{ referred_by?: string }>();
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "", referred_by: referred_by ?? "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "", referred_by: referred_by ? referred_by.trim().toUpperCase() : "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteValid, setInviteValid] = useState(true);
+  const [inviteChecking, setInviteChecking] = useState(false);
 
   useEffect(() => {
     if (referred_by) {
@@ -19,12 +23,64 @@ export default function ApplicationFormScreen() {
     }
   }, [referred_by]);
 
+  useEffect(() => {
+    if (form.confirm_password && form.password !== form.confirm_password) {
+      setConfirmError("Passwords do not match.");
+    } else {
+      setConfirmError("");
+    }
+  }, [form.password, form.confirm_password]);
+
+  useEffect(() => {
+    validateInviteCode(form.referred_by);
+  }, [form.referred_by]);
+
+  async function validateInviteCode(code: string) {
+    if (!code) {
+      setInviteValid(true);
+      setInviteError("");
+      return;
+    }
+
+    if (!hasSupabaseConfig) {
+      setInviteValid(true);
+      setInviteError("");
+      return;
+    }
+
+    setInviteChecking(true);
+    const { data, error } = await supabase
+      .from("invites")
+      .select("code, used_by")
+      .eq("code", code)
+      .single();
+    setInviteChecking(false);
+
+    if (error || !data) {
+      setInviteValid(false);
+      setInviteError("Invite code not found.");
+      return;
+    }
+    if (data.used_by) {
+      setInviteValid(false);
+      setInviteError("Invite code has already been used.");
+      return;
+    }
+
+    setInviteValid(true);
+    setInviteError("");
+  }
+
   const setField = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   async function submit() {
     setError("");
     if (!form.full_name || !form.email || !form.password || !form.confirm_password) {
       setError("Please complete all required fields.");
+      return;
+    }
+    if (!inviteValid) {
+      setError(inviteError || "Invalid invite code.");
       return;
     }
     if (form.password !== form.confirm_password) {
@@ -39,6 +95,12 @@ export default function ApplicationFormScreen() {
         if (error) throw error;
         await supabase.from("profiles").upsert({ id: data.user?.id, full_name: form.full_name, email: form.email, role: "member", status: "pending", riding_level: form.riding_level, weekly_km: form.weekly_km, instagram: form.instagram });
         await supabase.from("applications").insert({ user_id: data.user?.id, full_name: form.full_name, instagram: form.instagram, riding_level: form.riding_level, weekly_km: form.weekly_km, reason: form.reason, referred_by: form.referred_by, status: "pending" });
+        if (form.referred_by) {
+          await supabase
+            .from("invites")
+            .update({ used_by: data.user?.id, used_at: new Date().toISOString() })
+            .eq("code", form.referred_by);
+        }
       }
       router.replace("/pending");
     } catch (err) {
@@ -55,10 +117,10 @@ export default function ApplicationFormScreen() {
       <Text style={styles.title}>{step === 1 ? "Account" : step === 2 ? "Cycling Profile" : "Review"}</Text>
       {step === 1 ? (
         <View style={styles.card}>
-          <Input label="Full name" value={form.full_name} onChangeText={(value) => setField("full_name", value)} />
-          <Input label="Email" value={form.email} onChangeText={(value) => setField("email", value)} keyboardType="email-address" />
+          <Input label="Full name *" value={form.full_name} onChangeText={(value) => setField("full_name", value)} />
+          <Input label="Email *" value={form.email} onChangeText={(value) => setField("email", value)} keyboardType="email-address" autoCapitalize="none" />
           <Input label="Password" value={form.password} onChangeText={(value) => setField("password", value)} secureTextEntry />
-          <Input label="Confirm password" value={form.confirm_password} onChangeText={(value) => setField("confirm_password", value)} secureTextEntry />
+          <Input label="Confirm password" value={form.confirm_password} onChangeText={(value) => setField("confirm_password", value)} secureTextEntry errorText={confirmError} />
         </View>
       ) : null}
       {step === 2 ? (
@@ -68,7 +130,7 @@ export default function ApplicationFormScreen() {
           <View style={styles.pills}>{levels.map((level) => <Pressable key={level} style={[styles.level, form.riding_level === level && styles.levelActive]} onPress={() => setField("riding_level", level)}><Text style={styles.levelText}>{level}</Text></Pressable>)}</View>
           <Input label="Weekly km" value={form.weekly_km} onChangeText={(value) => setField("weekly_km", value)} />
           <Input label="Why R3CC?" value={form.reason} onChangeText={(value) => setField("reason", value)} multiline />
-          <Input label="Referred by" value={form.referred_by} onChangeText={(value) => setField("referred_by", value)} />
+          <Input label="Referred by" value={form.referred_by} onChangeText={(value) => setField("referred_by", value)} errorText={inviteError} />
         </View>
       ) : null}
       {step === 3 ? (
@@ -83,7 +145,18 @@ export default function ApplicationFormScreen() {
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <View style={styles.actions}>
-        {step > 1 ? <Pressable style={styles.secondary} onPress={() => setStep(step - 1)}><Text style={styles.secondaryText}>Back</Text></Pressable> : null}
+        <Pressable
+          style={styles.secondary}
+          onPress={() => {
+            if (step > 1) {
+              setStep(step - 1);
+            } else {
+              router.back();
+            }
+          }}
+        >
+          <Text style={styles.secondaryText}>{step > 1 ? "Back" : "Cancel"}</Text>
+        </Pressable>
         <Pressable style={styles.primary} onPress={step === 3 ? submit : () => setStep(step + 1)} disabled={submitting}>
           <Text style={styles.primaryText}>{step === 3 ? (submitting ? "Submitting" : "Submit") : "Next"}</Text>
         </Pressable>
@@ -92,11 +165,16 @@ export default function ApplicationFormScreen() {
   );
 }
 
-function Input(props: ComponentProps<typeof TextInput> & { label: string }) {
+function Input(props: ComponentProps<typeof TextInput> & { label: string; errorText?: string }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{props.label}</Text>
-      <TextInput {...props} placeholderTextColor={colors.dim} style={[styles.input, props.multiline && styles.textarea]} />
+      <TextInput
+        {...props}
+        placeholderTextColor={colors.dim}
+        style={[styles.input, props.multiline && styles.textarea, props.errorText ? styles.inputError : null]}
+      />
+      {props.errorText ? <Text style={styles.fieldError}>{props.errorText}</Text> : null}
     </View>
   );
 }
@@ -127,6 +205,8 @@ const styles = StyleSheet.create({
   primary: { flex: 1, alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.primary },
   primaryText: { color: colors.text, fontWeight: "900" },
   secondary: { flex: 1, alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceHigh },
-  secondaryText: { color: colors.text, fontWeight: "900" }
+  secondaryText: { color: colors.text, fontWeight: "900" },
+  fieldError: { color: colors.primary, marginTop: spacing.xs },
+  inputError: { borderColor: colors.primary, borderWidth: 1 }
 });
 

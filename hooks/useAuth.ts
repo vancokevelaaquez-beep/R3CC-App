@@ -90,7 +90,12 @@ export function useAuth(): AuthState {
           .single();
 
         if (profileError) {
-          throw profileError;
+          console.error("Profile fetch error:", profileError);
+          throw new Error(`Profile error: ${profileError.message}`);
+        }
+
+        if (!profileData) {
+          throw new Error("Profile not found. Admin profile may not be set up in database.");
         }
 
         setProfile(profileData as Profile);

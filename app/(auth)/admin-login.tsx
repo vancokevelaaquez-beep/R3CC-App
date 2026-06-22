@@ -11,6 +11,13 @@ export default function AdminLoginScreen() {
   const [error, setError] = useState("");
 
   async function submit() {
+    setError("");
+
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+
     try {
       const result = await signIn(email, password);
       if (result.role !== "admin") {
@@ -28,7 +35,7 @@ export default function AdminLoginScreen() {
       <Text style={styles.logo}>R3CC</Text>
       <Text style={styles.badge}>SHIELD</Text>
       <Text style={styles.title}>Admin Access</Text>
-      <TextInput value={email} onChangeText={setEmail} placeholder="Email" placeholderTextColor={colors.dim} style={styles.input} autoCapitalize="none" />
+      <TextInput value={email} onChangeText={(value) => setEmail(value.trim().toLowerCase())} placeholder="Email" placeholderTextColor={colors.dim} style={styles.input} autoCapitalize="none" keyboardType="email-address" />
       <TextInput value={password} onChangeText={setPassword} placeholder="Password" placeholderTextColor={colors.dim} style={styles.input} secureTextEntry />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable style={styles.button} onPress={submit}><Text style={styles.buttonText}>Sign In</Text></Pressable>
