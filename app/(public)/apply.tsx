@@ -8,7 +8,7 @@ const levels = ["beginner", "intermediate", "advanced", "elite"];
 
 export default function ApplicationFormScreen() {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", instagram: "", riding_level: "intermediate", weekly_km: "100-150", reason: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm_password: "", facebook: "", riding_level: "intermediate", years_riding: "", r3_version: "", reason: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [confirmError, setConfirmError] = useState("");
@@ -23,9 +23,28 @@ export default function ApplicationFormScreen() {
 
   const setField = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
+  const validateStep = (currentStep: number) => {
+    if (currentStep === 1) {
+      return !!(form.full_name && form.email && form.password && form.confirm_password);
+    }
+    if (currentStep === 2) {
+      return !!(form.facebook && form.years_riding && form.r3_version && form.reason);
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    setError("");
+    if (!validateStep(step)) {
+      setError("Please complete all required fields before continuing.");
+      return;
+    }
+    setStep(step + 1);
+  };
+
   async function submit() {
     setError("");
-    if (!form.full_name || !form.email || !form.password || !form.confirm_password) {
+    if (!form.full_name || !form.email || !form.password || !form.confirm_password || !form.facebook || !form.years_riding || !form.r3_version || !form.reason) {
       setError("Please complete all required fields.");
       return;
     }
@@ -39,8 +58,8 @@ export default function ApplicationFormScreen() {
       if (hasSupabaseConfig) {
         const { data, error } = await supabase.auth.signUp({ email: form.email, password: form.password });
         if (error) throw error;
-        await supabase.from("profiles").upsert({ id: data.user?.id, full_name: form.full_name, email: form.email, role: "member", status: "pending", riding_level: form.riding_level, weekly_km: form.weekly_km, instagram: form.instagram });
-        await supabase.from("applications").insert({ user_id: data.user?.id, full_name: form.full_name, instagram: form.instagram, riding_level: form.riding_level, weekly_km: form.weekly_km, reason: form.reason, status: "pending" });
+        await supabase.from("profiles").upsert({ id: data.user?.id, full_name: form.full_name, email: form.email, role: "member", status: "pending", riding_level: form.riding_level, weekly_km: form.years_riding, instagram: form.facebook });
+        await supabase.from("applications").insert({ user_id: data.user?.id, full_name: form.full_name, instagram: form.facebook, riding_level: form.riding_level, weekly_km: form.years_riding, r3_version: form.r3_version, reason: form.reason, status: "pending" });
       }
       router.replace("/pending");
     } catch (err) {
@@ -59,17 +78,18 @@ export default function ApplicationFormScreen() {
         <View style={styles.card}>
           <Input label="Full name *" value={form.full_name} onChangeText={(value) => setField("full_name", value)} />
           <Input label="Email *" value={form.email} onChangeText={(value) => setField("email", value)} keyboardType="email-address" autoCapitalize="none" />
-          <Input label="Password" value={form.password} onChangeText={(value) => setField("password", value)} secureTextEntry />
-          <Input label="Confirm password" value={form.confirm_password} onChangeText={(value) => setField("confirm_password", value)} secureTextEntry errorText={confirmError} />
+          <Input label="Password *" value={form.password} onChangeText={(value) => setField("password", value)} secureTextEntry />
+          <Input label="Confirm password *" value={form.confirm_password} onChangeText={(value) => setField("confirm_password", value)} secureTextEntry errorText={confirmError} />
         </View>
       ) : null}
       {step === 2 ? (
         <View style={styles.card}>
-          <Input label="Instagram" value={form.instagram} onChangeText={(value) => setField("instagram", value)} />
+          <Input label="Facebook *" value={form.facebook} onChangeText={(value) => setField("facebook", value)} />
           <Text style={styles.label}>Riding level</Text>
           <View style={styles.pills}>{levels.map((level) => <Pressable key={level} style={[styles.level, form.riding_level === level && styles.levelActive]} onPress={() => setField("riding_level", level)}><Text style={styles.levelText}>{level}</Text></Pressable>)}</View>
-          <Input label="Weekly km" value={form.weekly_km} onChangeText={(value) => setField("weekly_km", value)} />
-          <Input label="Why R3CC?" value={form.reason} onChangeText={(value) => setField("reason", value)} multiline />
+          <Input label="Years of riding *" value={form.years_riding} onChangeText={(value) => setField("years_riding", value)} />
+          <Input label="R3 version *" value={form.r3_version} onChangeText={(value) => setField("r3_version", value)} />
+          <Input label="Why R3CC? *" value={form.reason} onChangeText={(value) => setField("reason", value)} multiline />
         </View>
       ) : null}
       {step === 3 ? (
@@ -77,7 +97,8 @@ export default function ApplicationFormScreen() {
           <Summary label="Name" value={form.full_name} />
           <Summary label="Email" value={form.email} />
           <Summary label="Level" value={form.riding_level} />
-          <Summary label="Weekly" value={`${form.weekly_km} km`} />
+          <Summary label="Years riding" value={form.years_riding || "N/A"} />
+          <Summary label="R3 version" value={form.r3_version || "N/A"} />
           <Summary label="Reason" value={form.reason || "No reason entered"} />
         </View>
       ) : null}
@@ -95,7 +116,7 @@ export default function ApplicationFormScreen() {
         >
           <Text style={styles.secondaryText}>{step > 1 ? "Back" : "Cancel"}</Text>
         </Pressable>
-        <Pressable style={styles.primary} onPress={step === 3 ? submit : () => setStep(step + 1)} disabled={submitting}>
+        <Pressable style={styles.primary} onPress={step === 3 ? submit : handleNext} disabled={submitting}>
           <Text style={styles.primaryText}>{step === 3 ? (submitting ? "Submitting" : "Submit") : "Next"}</Text>
         </Pressable>
       </View>

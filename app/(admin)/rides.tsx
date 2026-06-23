@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View, Pressable, TextInput } from "react-
 import { GroupRideCard } from "@/components/GroupRideCard";
 import { colors, radii, spacing } from "@/constants/theme";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { notifyError, notifySuccess } from "@/lib/notifications";
 import { GroupRide, Profile } from "@/lib/types";
 import { groupRides as fallbackGroupRides } from "@/lib/mockData";
 
@@ -14,8 +15,6 @@ export default function AdminRideFeedScreen() {
   const [formVisible, setFormVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -133,8 +132,11 @@ export default function AdminRideFeedScreen() {
       setForm({ title: "", description: "", scheduled_at: "", distance_km: "", meet_location: "", max_riders: "", selectedMemberIds: [] });
       setFormVisible(false);
       setSuccess("Official ride created successfully.");
+      notifySuccess("Official ride created successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to create ride.");
+      const message = err instanceof Error ? err.message : "Unable to create ride.";
+      setError(message);
+      notifyError(message);
       console.error(err);
     } finally {
       setSaving(false);
@@ -171,8 +173,6 @@ export default function AdminRideFeedScreen() {
               </Pressable>
             ))}
           </View>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          {success ? <Text style={styles.success}>{success}</Text> : null}
           <Pressable style={[styles.saveButton, saving ? styles.saveButtonDisabled : null]} onPress={createRide} disabled={saving}>
             <Text style={styles.saveButtonText}>{saving ? "Saving…" : "Create Official Ride"}</Text>
           </Pressable>

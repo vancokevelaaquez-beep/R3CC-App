@@ -31,6 +31,7 @@ create table if not exists public.applications (
   instagram text,
   riding_level text,
   weekly_km text,
+  r3_version text,
   reason text,
   referred_by text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'declined')),
