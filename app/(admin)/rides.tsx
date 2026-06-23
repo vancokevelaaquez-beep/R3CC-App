@@ -75,11 +75,8 @@ export default function AdminRideFeedScreen() {
   };
 
   async function createRide() {
-    setError("");
-    setSuccess("");
-
     if (!form.title || !form.scheduled_at || !form.meet_location) {
-      setError("Title, scheduled date, and location are required.");
+      notifyError("Title, scheduled date, and location are required.");
       return;
     }
 
@@ -131,11 +128,9 @@ export default function AdminRideFeedScreen() {
       setRides((current) => [{ ...rideData, rsvp_count: form.selectedMemberIds.length }, ...current]);
       setForm({ title: "", description: "", scheduled_at: "", distance_km: "", meet_location: "", max_riders: "", selectedMemberIds: [] });
       setFormVisible(false);
-      setSuccess("Official ride created successfully.");
       notifySuccess("Official ride created successfully.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to create ride.";
-      setError(message);
       notifyError(message);
       console.error(err);
     } finally {
