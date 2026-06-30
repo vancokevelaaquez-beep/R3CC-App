@@ -7,7 +7,16 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 
 export default function RoutePlanningScreen() {
   const [localRoutes, setLocalRoutes] = useState(fallbackRoutes);
-  const featured = localRoutes[0];
+  const featured = localRoutes[0] ?? {
+    id: "fallback-route",
+    title: "Sample Route",
+    description: "Loading route details...",
+    distance_km: 0,
+    elevation_m: 0,
+    difficulty: "easy",
+    coords: [],
+    is_shared: false
+  };
 
   useEffect(() => {
     if (!hasSupabaseConfig) {
@@ -41,7 +50,7 @@ export default function RoutePlanningScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Routes</Text>
-      <View style={styles.mapWrap}><RouteMap coords={featured.coords} dashed height={300} /></View>
+      <View style={styles.mapWrap}><RouteMap coords={featured.coords ?? []} dashed height={300} /></View>
       <View style={styles.sheet}>
         <View style={styles.handle} />
         <View style={styles.stats}>
