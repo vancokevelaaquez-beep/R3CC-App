@@ -7,6 +7,7 @@ const iconByType: Record<Notification["type"], string> = {
   comment: "M",
   group_ride: "G",
   approved: "S",
+  declined: "D",
   invite_accepted: "+",
   pr: "T",
   streak: "F"

@@ -166,6 +166,7 @@ const styles = StyleSheet.create({
   secondary: { flex: 1, alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceHigh },
   secondaryText: { color: colors.text, fontWeight: "900" },
   fieldError: { color: colors.primary, marginTop: spacing.xs },
-  inputError: { borderColor: colors.primary, borderWidth: 1 }
+  inputError: { borderColor: colors.primary, borderWidth: 1 },
+  error: { color: colors.primary, fontWeight: "700" }
 });
 

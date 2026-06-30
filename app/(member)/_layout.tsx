@@ -16,7 +16,6 @@ export default function MemberTabs() {
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ focused }) => <TabGlyph label="P" focused={focused} /> }} />
       <Tabs.Screen name="summary" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
-      <Tabs.Screen name="invite" options={{ href: null }} />
     </Tabs>
   );
 }

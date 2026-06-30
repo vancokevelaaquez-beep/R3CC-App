@@ -21,6 +21,8 @@ export type Profile = {
   total_km: number;
   total_rides: number;
   streak_days: number;
+  membership_paid?: boolean | null;
+  membership_paid_at?: string | null;
 };
 
 export type LatLngPoint = {

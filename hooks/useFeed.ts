@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { rides as fallbackRides } from "@/lib/mockData";
+import { rides as fallbackRides, routes as fallbackRoutes } from "@/lib/mockData";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
-import { Ride } from "@/lib/types";
+import { Ride, RoutePlan } from "@/lib/types";
 
 export function useFeed() {
   const [rides, setRides] = useState<Ride[]>(fallbackRides);
+  const [sharedRoutes, setSharedRoutes] = useState<RoutePlan[]>(fallbackRoutes.filter((route) => route.is_shared));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -29,18 +30,37 @@ export function useFeed() {
       }
     }
 
-    loadRides();
+    async function loadRoutes() {
+      const { data } = await supabase
+        .from("routes")
+        .select("*")
+        .eq("is_shared", true)
+        .order("updated_at", { ascending: false });
 
-    const channel = supabase
+      if (mounted && data) {
+        setSharedRoutes(data as RoutePlan[]);
+      }
+    }
+
+    loadRides();
+    loadRoutes();
+
+    const ridesChannel = supabase
       .channel("rides-feed")
       .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, loadRides)
       .subscribe();
 
+    const routesChannel = supabase
+      .channel("routes-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "routes" }, loadRoutes)
+      .subscribe();
+
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      supabase.removeChannel(ridesChannel);
+      supabase.removeChannel(routesChannel);
     };
   }, []);
 
-  return { rides, loading };
+  return { rides, sharedRoutes, loading };
 }

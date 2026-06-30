@@ -9,6 +9,7 @@ type AuthState = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ role?: Role; status?: ProfileStatus }>;
   signOut: () => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
 };
 
 const demoProfile: Profile = {
@@ -117,6 +118,24 @@ export function useAuth(): AuthState {
         }
         setSession(null);
         setProfile(hasSupabaseConfig ? null : demoProfile);
+      },
+      changePassword: async (newPassword) => {
+        if (!newPassword.trim()) {
+          throw new Error("Please enter a new password.");
+        }
+
+        if (newPassword.length < 6) {
+          throw new Error("Password must be at least 6 characters long.");
+        }
+
+        if (!hasSupabaseConfig) {
+          return;
+        }
+
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) {
+          throw error;
+        }
       }
     }),
     [loading, profile, session]

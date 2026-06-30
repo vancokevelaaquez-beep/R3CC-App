@@ -6,9 +6,9 @@ import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { Profile } from "@/lib/types";
 
 const demoMembers = [
-  { id: "demo-1", full_name: "Ari Santos", email: "ari@r3cc.app", role: "member", status: "approved", total_km: 1200 },
-  { id: "demo-2", full_name: "Mika Reyes", email: "mika@r3cc.app", role: "member", status: "approved", total_km: 890 },
-  { id: "demo-3", full_name: "Jules Tan", email: "jules@r3cc.app", role: "member", status: "approved", total_km: 640 }
+  { id: "demo-1", full_name: "Ari Santos", email: "ari@r3cc.app", role: "member", status: "approved", total_km: 1200, membership_paid: false },
+  { id: "demo-2", full_name: "Mika Reyes", email: "mika@r3cc.app", role: "member", status: "approved", total_km: 890, membership_paid: true },
+  { id: "demo-3", full_name: "Jules Tan", email: "jules@r3cc.app", role: "member", status: "approved", total_km: 640, membership_paid: false }
 ];
 
 export default function AdminMembersScreen() {
