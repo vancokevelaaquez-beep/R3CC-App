@@ -20,6 +20,7 @@ export function useFeed() {
       const { data } = await supabase
         .from("rides")
         .select("*, profiles(full_name, username, avatar_url)")
+        .eq("is_public", true)
         .order("created_at", { ascending: false });
 
       if (mounted && data) {

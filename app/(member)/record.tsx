@@ -26,11 +26,13 @@ export default function RideRecordingScreen() {
     }
   }
 
-  function stop() {
-    Alert.alert("Stop ride?", "Your ride will be saved to the summary screen.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Stop", style: "destructive", onPress: () => { ride.stop(); router.replace("/(member)/summary"); } }
-    ]);
+  function endRide() {
+    ride.stop();
+    router.replace("/(member)/summary");
+  }
+
+  function openMoreOptions() {
+    router.push("/(member)/profile");
   }
 
   return (
@@ -48,9 +50,9 @@ export default function RideRecordingScreen() {
         <View style={styles.controls}>
           <Pressable style={styles.control}><Text style={styles.controlText}>Center</Text></Pressable>
           <Pressable style={styles.control} onPress={ride.isPaused ? ride.resume : ride.pause}><Text style={styles.controlText}>{ride.isPaused ? "Resume" : "Pause"}</Text></Pressable>
-          <Pressable style={[styles.control, styles.stop]} onPress={stop}><Text style={styles.controlText}>Stop</Text></Pressable>
+          <Pressable style={[styles.control, styles.stop]} onPress={endRide}><Text style={styles.controlText}>Stop</Text></Pressable>
           <Pressable style={styles.control} onPress={addPhoto}><Text style={styles.controlText}>Photo</Text></Pressable>
-          <Pressable style={styles.control} onPress={() => router.push("/(member)/profile")}><Text style={styles.controlText}>More</Text></Pressable>
+          <Pressable style={styles.control} onPress={openMoreOptions}><Text style={styles.controlText}>More</Text></Pressable>
         </View>
       </View>
     </View>

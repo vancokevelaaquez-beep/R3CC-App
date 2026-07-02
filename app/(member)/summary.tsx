@@ -1,19 +1,59 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { RouteMap } from "@/components/RouteMap";
 import { StatsPanel } from "@/components/StatsPanel";
 import { colors, radii, spacing } from "@/constants/theme";
 import { formatDuration } from "@/lib/haversine";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { notifyError, notifySuccess } from "@/lib/notifications";
 import { useRideStore } from "@/store/rideStore";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RideSummaryScreen() {
   const ride = useRideStore();
+  const { profile } = useAuth();
+  const [caption, setCaption] = useState("#r3cc #cycling");
 
-  async function saveRide() {
-    if (hasSupabaseConfig) {
-      await supabase.from("rides").insert({ title: "R3CC Ride", distance_km: ride.distanceKm, duration_sec: ride.elapsedSec, avg_speed: ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600), top_speed: ride.topSpeedKph, elevation_m: 0, route_coords: ride.coords, is_public: false, caption: "#r3cc #cycling" });
+  async function saveRide(isPublic: boolean) {
+    if (!hasSupabaseConfig) {
+      ride.reset();
+      router.replace("/(member)/feed");
+      return;
     }
+
+    const sessionResponse = await supabase.auth.getSession();
+    const userId = sessionResponse.data?.session?.user?.id;
+    if (!userId) {
+      notifyError("Unable to save ride: not signed in.");
+      return;
+    }
+
+    if (!profile?.status || profile.status !== "approved") {
+      notifyError("Your account must be approved before saving rides.");
+      return;
+    }
+
+    const { error } = await supabase.from("rides").insert({
+      user_id: userId,
+      title: "R3CC Ride",
+      distance_km: ride.distanceKm,
+      duration_sec: ride.elapsedSec,
+      avg_speed: ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600),
+      top_speed: ride.topSpeedKph,
+      elevation_m: 0,
+      route_coords: ride.coords,
+      is_public: isPublic,
+      caption
+    });
+
+    if (error) {
+      notifyError(error.message || "Failed to save ride.");
+      console.error(error);
+      return;
+    }
+
+    notifySuccess(isPublic ? "Ride shared to feed." : "Ride saved successfully.");
     ride.reset();
     router.replace("/(member)/feed");
   }
@@ -25,10 +65,10 @@ export default function RideSummaryScreen() {
       <Text style={styles.badge}>Personal Record candidate</Text>
       <StatsPanel stats={[{ label: "Distance", value: `${ride.distanceKm.toFixed(2)} km` }, { label: "Moving", value: formatDuration(ride.elapsedSec) }, { label: "Avg", value: `${(ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600)).toFixed(1)}` }]} />
       <View style={styles.chart}><Text style={styles.chartText}>Elevation profile</Text></View>
-      <TextInput placeholder="Add a caption" placeholderTextColor={colors.dim} style={styles.input} />
+      <TextInput value={caption} onChangeText={setCaption} placeholder="Add a caption" placeholderTextColor={colors.dim} style={styles.input} />
       <View style={styles.tags}><Text style={styles.tag}>#r3cc</Text><Text style={styles.tag}>#cycling</Text></View>
-      <Pressable style={styles.button} onPress={saveRide}><Text style={styles.buttonText}>Save Ride</Text></Pressable>
-      <Pressable style={styles.buttonAlt} onPress={saveRide}><Text style={styles.buttonText}>Share to Feed</Text></Pressable>
+      <Pressable style={styles.button} onPress={() => saveRide(false)}><Text style={styles.buttonText}>Save Ride</Text></Pressable>
+      <Pressable style={styles.buttonAlt} onPress={() => saveRide(true)}><Text style={styles.buttonText}>Share to Feed</Text></Pressable>
     </ScrollView>
   );
 }

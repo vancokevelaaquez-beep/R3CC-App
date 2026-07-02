@@ -48,7 +48,9 @@ export const useRideStore = create<RideState>((set, get) => ({
     const { coords, distanceKm, topSpeedKph } = get();
     const previous = coords[coords.length - 1];
     const segmentKm = previous ? haversineKm(previous, point) : 0;
-    const currentSpeedKph = previous ? speedKph(previous, point) : 0;
+    const gpsSpeedKph = typeof point.speedMps === "number" && Number.isFinite(point.speedMps) ? point.speedMps * 3.6 : null;
+    const fallbackSpeedKph = previous ? speedKph(previous, point) : 0;
+    const currentSpeedKph = gpsSpeedKph !== null && gpsSpeedKph >= 0 ? gpsSpeedKph : fallbackSpeedKph;
 
     set({
       coords: [...coords, point],

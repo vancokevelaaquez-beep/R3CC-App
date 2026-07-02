@@ -30,6 +30,7 @@ export type LatLngPoint = {
   longitude: number;
   timestamp?: number;
   altitude?: number | null;
+  speedMps?: number | null;
 };
 
 export type Ride = {

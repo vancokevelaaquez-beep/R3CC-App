@@ -41,7 +41,8 @@ export function useGPS() {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
             altitude: location.coords.altitude,
-            timestamp: location.timestamp
+            timestamp: location.timestamp,
+            speedMps: typeof location.coords.speed === "number" && Number.isFinite(location.coords.speed) ? location.coords.speed : null
           });
         }
       );
