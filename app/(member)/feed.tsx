@@ -1,8 +1,11 @@
 import { Link } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { RideCard } from "@/components/RideCard";
 import { colors, radii, spacing } from "@/constants/theme";
 import { useFeed } from "@/hooks/useFeed";
+import { useAuth } from "@/hooks/useAuth";
+import { Ride } from "@/lib/types";
 
 function SharedRouteCard({ route }: { route: { id: string; title: string; distance_km: number; difficulty: string; elevation_m: number; is_shared: boolean } }) {
   return (
@@ -17,7 +20,30 @@ function SharedRouteCard({ route }: { route: { id: string; title: string; distan
 }
 
 export default function HomeFeedScreen() {
-  const { rides, sharedRoutes } = useFeed();
+  const { rides, sharedRoutes, updateRide, deleteRide, reactToRide, commentOnRide } = useFeed();
+  const { profile } = useAuth();
+  const [editingRide, setEditingRide] = useState<Ride | null>(null);
+  const [caption, setCaption] = useState("");
+
+  function startEditing(ride: Ride) {
+    setCaption(ride.caption ?? "");
+    setEditingRide(ride);
+  }
+
+  async function saveEdit() {
+    if (!editingRide) return;
+    if (await updateRide(editingRide.id, { caption })) setEditingRide(null);
+    else Alert.alert("Unable to update ride", "Please try again.");
+  }
+
+  function confirmDelete(ride: Ride) {
+    Alert.alert("Delete ride?", "This removes the ride from the feed.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => {
+        if (!await deleteRide(ride.id)) Alert.alert("Unable to delete ride", "Please try again.");
+      } }
+    ]);
+  }
 
   return (
     <View style={styles.screen}>
@@ -38,9 +64,19 @@ export default function HomeFeedScreen() {
             {sharedRoutes.map((route) => <SharedRouteCard key={route.id} route={route} />)}
           </View>
         ) : null}
-        {rides.map((ride) => <RideCard key={ride.id} ride={ride} />)}
+        {rides.map((ride) => <RideCard key={ride.id} ride={ride} canManage={ride.user_id === profile?.id} onEdit={() => startEditing(ride)} onDelete={() => confirmDelete(ride)} onReact={() => reactToRide(ride.id)} onComment={() => commentOnRide(ride.id)} />)}
       </ScrollView>
       <Link href="/(member)/record" asChild><Pressable style={styles.fab}><Text style={styles.fabText}>BIKE</Text></Pressable></Link>
+      <Modal visible={Boolean(editingRide)} transparent animationType="fade" onRequestClose={() => setEditingRide(null)}>
+        <View style={styles.modalBackdrop}><View style={styles.modal}>
+          <Text style={styles.modalTitle}>Edit ride caption</Text>
+          <TextInput value={caption} onChangeText={setCaption} multiline style={styles.editInput} placeholder="Add a caption" placeholderTextColor={colors.dim} />
+          <View style={styles.modalActions}>
+            <Pressable style={styles.cancelButton} onPress={() => setEditingRide(null)}><Text style={styles.buttonText}>Cancel</Text></Pressable>
+            <Pressable style={styles.saveButton} onPress={saveEdit}><Text style={styles.buttonText}>Save</Text></Pressable>
+          </View>
+        </View></View>
+      </Modal>
     </View>
   );
 }
@@ -63,5 +99,13 @@ const styles = StyleSheet.create({
   sharedPill: { color: colors.primary, fontWeight: "900" },
   routeMeta: { color: colors.muted, marginTop: spacing.xs },
   fab: { position: "absolute", right: spacing.lg, bottom: spacing.lg, width: 68, height: 68, borderRadius: 34, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary },
-  fabText: { color: colors.text, fontWeight: "900", fontSize: 12 }
+  fabText: { color: colors.text, fontWeight: "900", fontSize: 12 },
+  modalBackdrop: { flex: 1, justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(0,0,0,0.65)" },
+  modal: { gap: spacing.md, padding: spacing.lg, borderRadius: radii.lg, backgroundColor: colors.surface },
+  modalTitle: { color: colors.text, fontSize: 20, fontWeight: "900" },
+  editInput: { minHeight: 100, padding: spacing.md, borderRadius: radii.md, color: colors.text, backgroundColor: colors.surfaceHigh, textAlignVertical: "top" },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
+  cancelButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.md, backgroundColor: colors.surfaceHigh },
+  saveButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.md, backgroundColor: colors.primary },
+  buttonText: { color: colors.text, fontWeight: "900" }
 });

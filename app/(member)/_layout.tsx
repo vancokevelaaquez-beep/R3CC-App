@@ -12,7 +12,6 @@ export default function MemberTabs() {
       <Tabs.Screen name="feed" options={{ title: "Home", tabBarIcon: ({ focused }) => <TabGlyph label="H" focused={focused} /> }} />
       <Tabs.Screen name="routes" options={{ title: "Routes", tabBarIcon: ({ focused }) => <TabGlyph label="R" focused={focused} /> }} />
       <Tabs.Screen name="record" options={{ title: "REC", tabBarStyle: { display: "none" }, tabBarIcon: ({ focused }) => <TabGlyph label="+" focused={focused} /> }} />
-      <Tabs.Screen name="groups" options={{ title: "Groups", tabBarIcon: ({ focused }) => <TabGlyph label="G" focused={focused} /> }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ({ focused }) => <TabGlyph label="P" focused={focused} /> }} />
       <Tabs.Screen name="summary" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />

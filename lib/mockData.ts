@@ -10,7 +10,7 @@ export const sampleRoute = [
 export const rides: Ride[] = [
   {
     id: "ride-1",
-    user_id: "member-1",
+    user_id: "demo-member",
     title: "Dawn tempo loop",
     distance_km: 42.7,
     duration_sec: 5480,
@@ -69,9 +69,9 @@ export const routes: RoutePlan[] = [
 
 export const groupRides: GroupRide[] = [
   {
-    id: "group-1",
+    id: "official-ride-1",
     title: "Saturday Redline",
-    description: "Members-only endurance pace with rotating pulls.",
+    description: "Official club ride with a rotating pace line.",
     scheduled_at: new Date(Date.now() + 86400000 * 2).toISOString(),
     distance_km: 68,
     meet_location: "R3CC Clubhouse",

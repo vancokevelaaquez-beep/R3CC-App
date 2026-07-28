@@ -18,41 +18,11 @@ export function GroupRideCard({ ride }: { ride: GroupRide }) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border
-  },
-  icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary
-  },
-  iconText: {
-    color: colors.text,
-    fontWeight: "900"
-  },
-  copy: {
-    flex: 1
-  },
-  title: {
-    color: colors.text,
-    fontWeight: "900"
-  },
-  meta: {
-    marginTop: 4,
-    color: colors.muted
-  },
-  location: {
-    marginTop: 3,
-    color: colors.dim
-  }
+  card: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  icon: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary },
+  iconText: { color: colors.text, fontWeight: "900" },
+  copy: { flex: 1 },
+  title: { color: colors.text, fontWeight: "900" },
+  meta: { marginTop: 4, color: colors.muted },
+  location: { marginTop: 3, color: colors.dim }
 });

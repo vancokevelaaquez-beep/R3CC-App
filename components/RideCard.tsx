@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { useState } from "react";
 import { colors, radii, shadows, spacing } from "@/constants/theme";
 import { Ride } from "@/lib/types";
 import { formatDuration } from "@/lib/haversine";
@@ -6,8 +7,31 @@ import { MemberAvatar } from "./MemberAvatar";
 import { RouteMap } from "./RouteMap";
 import { StatsPanel } from "./StatsPanel";
 
-export function RideCard({ ride }: { ride: Ride }) {
+type Props = {
+  ride: Ride;
+  canManage?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onReact?: () => void;
+  onComment?: (comment: string) => void;
+};
+
+export function RideCard({ ride, canManage, onEdit, onDelete, onReact, onComment }: Props) {
   const name = ride.profile?.full_name ?? "R3CC Member";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState<string[]>([]);
+
+  async function shareRide() {
+    await Share.share({ message: `${name}'s ride: ${ride.title} — ${ride.distance_km.toFixed(1)} km. ${ride.caption ?? ""}` });
+  }
+
+  function submitComment() {
+    if (!comment.trim()) return;
+    onComment?.(comment.trim());
+    setComments((current) => [...current, comment.trim()]);
+    setComment("");
+  }
 
   return (
     <Pressable style={styles.card}>
@@ -17,7 +41,13 @@ export function RideCard({ ride }: { ride: Ride }) {
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.meta}>@{ride.profile?.username ?? "member"} | {formatDuration(ride.duration_sec)}</Text>
         </View>
-        <Text style={styles.more}>...</Text>
+        {canManage ? (
+          <View style={styles.menuWrap}>
+            <Pressable style={styles.moreButton} onPress={() => setMenuOpen((open) => !open)} accessibilityLabel="Ride options">
+              <Text style={styles.more}>•••</Text>
+            </Pressable>
+          </View>
+        ) : <Text style={styles.more}>...</Text>}
       </View>
       <View style={styles.mapWrap}>
         <RouteMap coords={ride.route_coords} height={190} />
@@ -31,18 +61,29 @@ export function RideCard({ ride }: { ride: Ride }) {
       />
       {ride.photos?.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photos}>
-          {ride.photos.map((photo) => (
-            <View key={photo} style={styles.photo} />
-          ))}
+          {ride.photos.map((photo) => <Image key={photo} source={{ uri: photo }} style={styles.photo} />)}
         </ScrollView>
       ) : null}
       <Text style={styles.caption}>{ride.caption}</Text>
       <View style={styles.actions}>
-        <Text style={styles.action}>Heart {ride.like_count ?? 0}</Text>
-        <Text style={styles.action}>Comment {ride.comment_count ?? 0}</Text>
-        <Text style={styles.action}>Share</Text>
-        <Text style={styles.action}>Save</Text>
+        <Pressable onPress={onReact}><Text style={styles.action}>React {ride.like_count ?? 0}</Text></Pressable>
+        <Pressable onPress={submitComment}><Text style={styles.action}>Comment {ride.comment_count ?? 0}</Text></Pressable>
+        <Pressable onPress={shareRide}><Text style={styles.action}>Share</Text></Pressable>
       </View>
+      <View style={styles.commentRow}>
+        <TextInput value={comment} onChangeText={setComment} onSubmitEditing={submitComment} placeholder="Write a comment" placeholderTextColor={colors.dim} style={styles.commentInput} />
+        <Pressable onPress={submitComment}><Text style={styles.postComment}>Post</Text></Pressable>
+      </View>
+      {comments.map((item, index) => <Text key={`${item}-${index}`} style={styles.commentText}>{item}</Text>)}
+      <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.menu}>
+            <Pressable style={styles.menuItem} onPress={() => { setMenuOpen(false); onEdit?.(); }}><Text style={styles.menuText}>Edit ride</Text></Pressable>
+            <Pressable style={styles.menuItem} onPress={() => { setMenuOpen(false); onDelete?.(); }}><Text style={[styles.menuText, styles.deleteAction]}>Delete ride</Text></Pressable>
+            <Pressable style={styles.cancelItem} onPress={() => setMenuOpen(false)}><Text style={styles.menuText}>Cancel</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
     </Pressable>
   );
 }
@@ -79,6 +120,14 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontWeight: "900"
   },
+  menuWrap: { position: "relative" },
+  moreButton: { minWidth: 32, minHeight: 32, alignItems: "center", justifyContent: "center" },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", padding: spacing.md, backgroundColor: "rgba(0,0,0,0.55)" },
+  menu: { borderRadius: radii.lg, backgroundColor: colors.surface, overflow: "hidden", borderWidth: 1, borderColor: colors.border },
+  menuItem: { alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  cancelItem: { alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: spacing.md, backgroundColor: colors.surfaceHigh },
+  menuText: { color: colors.text, fontSize: 15, fontWeight: "800" },
+  deleteAction: { color: colors.primary },
   mapWrap: {
     overflow: "hidden",
     borderRadius: radii.md
@@ -104,5 +153,9 @@ const styles = StyleSheet.create({
   action: {
     color: colors.muted,
     fontWeight: "700"
-  }
+  },
+  commentRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  commentInput: { flex: 1, minHeight: 40, paddingHorizontal: spacing.sm, borderRadius: radii.sm, color: colors.text, backgroundColor: colors.surfaceHigh },
+  postComment: { color: colors.primary, fontWeight: "900" },
+  commentText: { color: colors.muted, fontSize: 13 }
 });
