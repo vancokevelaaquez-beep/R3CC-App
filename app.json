@@ -27,12 +27,17 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION"
+        "ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "b13dd1a5-96fd-45af-8488-f887bfa8ae41"
       }
     }
   }

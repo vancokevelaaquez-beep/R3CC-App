@@ -10,7 +10,7 @@ export function GroupRideCard({ ride }: { ride: GroupRide }) {
       <View style={styles.icon}><Text style={styles.iconText}>R</Text></View>
       <View style={styles.copy}>
         <Text style={styles.title}>{ride.title}</Text>
-        <Text style={styles.meta}>{date} | {ride.distance_km} km | {ride.rsvp_count ?? 0} going</Text>
+        <Text style={styles.meta}>{date} | {ride.rsvp_count ?? 0} going</Text>
         <Text style={styles.location}>{ride.meet_location}</Text>
       </View>
     </Pressable>
