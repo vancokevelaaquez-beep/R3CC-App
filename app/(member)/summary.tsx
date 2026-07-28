@@ -63,6 +63,7 @@ export default function RideSummaryScreen() {
           top_speed: ride.topSpeedKph,
           elevation_m: 0,
           route_coords: ride.coords,
+          is_public: isPublic,
           caption,
           photos: photos.map((photo) => photo.uri),
           created_at: new Date().toISOString(),
@@ -71,7 +72,7 @@ export default function RideSummaryScreen() {
       }
       ride.reset();
       setIsSaving(false);
-      router.replace("/(member)/feed");
+      router.replace(isPublic ? "/(member)/feed" : "/(member)/saved-rides");
       return;
     }
     try {
@@ -110,7 +111,7 @@ export default function RideSummaryScreen() {
 
       notifySuccess(`${isPublic ? "Ride shared to feed." : "Ride saved successfully."}${photoWarning}`);
       ride.reset();
-      router.replace("/(member)/feed");
+      router.replace(isPublic ? "/(member)/feed" : "/(member)/saved-rides");
     } catch (error) {
       notifyError(error instanceof Error ? error.message : "Failed to save ride.");
       console.error(error);

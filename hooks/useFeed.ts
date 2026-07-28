@@ -9,8 +9,12 @@ export function addDemoRide(ride: Ride) {
   demoRides = [ride, ...demoRides];
 }
 
+export function getDemoSavedRides(userId?: string) {
+  return demoRides.filter((ride) => !ride.is_public && (!userId || ride.user_id === userId));
+}
+
 export function useFeed() {
-  const [rides, setRides] = useState<Ride[]>(demoRides);
+  const [rides, setRides] = useState<Ride[]>(demoRides.filter((ride) => ride.is_public !== false));
   const [sharedRoutes, setSharedRoutes] = useState<RoutePlan[]>(fallbackRoutes.filter((route) => route.is_shared));
   const [loading, setLoading] = useState(false);
 

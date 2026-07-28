@@ -25,6 +25,7 @@ export default function MemberTabs() {
       <Tabs.Screen name="record" options={{ title: "REC", tabBarStyle: { display: "none" }, tabBarIcon: ({ focused }) => <TabGlyph label="+" focused={focused} /> }} />
       <Tabs.Screen name="profile" listeners={({ navigation }) => ({ tabPress: (event) => confirmLeavingRecording(event, () => navigation.navigate("profile")) })} options={{ title: "Profile", tabBarIcon: ({ focused }) => <TabGlyph label="P" focused={focused} /> }} />
       <Tabs.Screen name="summary" options={{ href: null }} />
+      <Tabs.Screen name="saved-rides" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   );

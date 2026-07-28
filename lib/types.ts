@@ -8,6 +8,9 @@ export type Profile = {
   username: string;
   email: string;
   avatar_url?: string | null;
+  cover_url?: string | null;
+  birthday?: string | null;
+  location?: string | null;
   role: Role;
   status: ProfileStatus;
   invite_code?: string | null;
@@ -44,6 +47,7 @@ export type Ride = {
   elevation_m: number;
   route_coords: LatLngPoint[];
   caption?: string | null;
+  is_public?: boolean;
   created_at: string;
   profile?: Pick<Profile, "full_name" | "username" | "avatar_url">;
   like_count?: number;

@@ -10,6 +10,7 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<{ role?: Role; status?: ProfileStatus }>;
   signOut: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<Profile, "avatar_url" | "cover_url" | "birthday" | "location">>) => Promise<void>;
 };
 
 const demoProfile: Profile = {
@@ -136,6 +137,16 @@ export function useAuth(): AuthState {
         if (error) {
           throw error;
         }
+      },
+      updateProfile: async (updates) => {
+        if (!hasSupabaseConfig) {
+          setProfile((current) => current ? { ...current, ...updates } : current);
+          return;
+        }
+        if (!session?.user.id) throw new Error("Please sign in again.");
+        const { data, error } = await supabase.from("profiles").update(updates).eq("id", session.user.id).select().single();
+        if (error) throw error;
+        setProfile(data as Profile);
       }
     }),
     [loading, profile, session]

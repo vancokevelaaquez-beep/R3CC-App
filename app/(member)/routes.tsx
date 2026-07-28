@@ -72,7 +72,12 @@ export default function RoutePlanningScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Routes</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Routes</Text>
+        <Pressable style={styles.savedRidesButton} onPress={() => router.navigate("/(member)/saved-rides")}>
+          <Text style={styles.savedRidesText}>Saved Rides</Text>
+        </Pressable>
+      </View>
       <View style={styles.mapWrap}><RouteMap coords={featured.coords ?? []} dashed height={300} /></View>
       <View style={styles.sheet}>
         <View style={styles.handle} />
@@ -102,7 +107,10 @@ export default function RoutePlanningScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.lg },
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   title: { color: colors.text, fontSize: 32, fontWeight: "900" },
+  savedRidesButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.surfaceHigh },
+  savedRidesText: { color: colors.text, fontWeight: "900", fontSize: 12 },
   mapWrap: { overflow: "hidden", borderRadius: radii.lg },
   sheet: { gap: spacing.md, padding: spacing.md, borderRadius: radii.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   handle: { alignSelf: "center", width: 46, height: 5, borderRadius: radii.pill, backgroundColor: colors.dim },
