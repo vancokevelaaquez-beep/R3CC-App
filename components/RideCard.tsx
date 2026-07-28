@@ -1,10 +1,9 @@
-import { Image, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Modal, Pressable, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useState } from "react";
 import { colors, radii, shadows, spacing } from "@/constants/theme";
 import { Ride } from "@/lib/types";
 import { formatDuration } from "@/lib/haversine";
 import { MemberAvatar } from "./MemberAvatar";
-import { RouteMap } from "./RouteMap";
 import { StatsPanel } from "./StatsPanel";
 
 type Props = {
@@ -49,24 +48,21 @@ export function RideCard({ ride, canManage, onEdit, onDelete, onReact, onComment
           </View>
         ) : <Text style={styles.more}>...</Text>}
       </View>
-      <View style={styles.mapWrap}>
-        <RouteMap coords={ride.route_coords} height={190} />
-      </View>
+      {ride.photos?.length ? (
+        <View style={styles.photos}>
+          {ride.photos.map((photo) => <Image key={photo} source={{ uri: photo }} style={styles.photo} />)}
+        </View>
+      ) : null}
+      <Text style={styles.caption}>{ride.caption}</Text>
       <StatsPanel
         stats={[
           { label: "Distance", value: `${ride.distance_km.toFixed(1)} km` },
-          { label: "Avg", value: `${ride.avg_speed.toFixed(1)} kph` },
-          { label: "Top", value: `${ride.top_speed.toFixed(0)} kph` }
+          { label: "Elevation", value: `${ride.elevation_m.toFixed(0)} m` },
+          { label: "Time", value: formatDuration(ride.duration_sec) }
         ]}
       />
-      {ride.photos?.length ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photos}>
-          {ride.photos.map((photo) => <Image key={photo} source={{ uri: photo }} style={styles.photo} />)}
-        </ScrollView>
-      ) : null}
-      <Text style={styles.caption}>{ride.caption}</Text>
       <View style={styles.actions}>
-        <Pressable onPress={onReact}><Text style={styles.action}>React {ride.like_count ?? 0}</Text></Pressable>
+        <Pressable onPress={onReact}><Text style={[styles.action, ride.reacted_by_me && styles.reacted]}>React {ride.like_count ?? 0}</Text></Pressable>
         <Pressable onPress={submitComment}><Text style={styles.action}>Comment {ride.comment_count ?? 0}</Text></Pressable>
         <Pressable onPress={shareRide}><Text style={styles.action}>Share</Text></Pressable>
       </View>
@@ -128,19 +124,13 @@ const styles = StyleSheet.create({
   cancelItem: { alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: spacing.md, backgroundColor: colors.surfaceHigh },
   menuText: { color: colors.text, fontSize: 15, fontWeight: "800" },
   deleteAction: { color: colors.primary },
-  mapWrap: {
-    overflow: "hidden",
-    borderRadius: radii.md
-  },
-  photos: {
-    marginTop: -4
-  },
+  photos: { gap: spacing.sm },
   photo: {
-    width: 88,
-    height: 88,
-    marginRight: spacing.sm,
+    width: "100%",
+    aspectRatio: 4 / 3,
     borderRadius: radii.sm,
-    backgroundColor: colors.surfaceHigh
+    backgroundColor: colors.surfaceHigh,
+    resizeMode: "cover"
   },
   caption: {
     color: colors.text,
@@ -154,6 +144,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontWeight: "700"
   },
+  reacted: { color: colors.primary },
   commentRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   commentInput: { flex: 1, minHeight: 40, paddingHorizontal: spacing.sm, borderRadius: radii.sm, color: colors.text, backgroundColor: colors.surfaceHigh },
   postComment: { color: colors.primary, fontWeight: "900" },

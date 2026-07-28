@@ -47,6 +47,7 @@ export type Ride = {
   created_at: string;
   profile?: Pick<Profile, "full_name" | "username" | "avatar_url">;
   like_count?: number;
+  reacted_by_me?: boolean;
   comment_count?: number;
   photos?: string[];
 };
@@ -60,6 +61,7 @@ export type RoutePlan = {
   difficulty: "easy" | "medium" | "hard";
   coords: LatLngPoint[];
   is_shared: boolean;
+  profile?: Pick<Profile, "full_name" | "username" | "avatar_url">;
 };
 
 export type GroupRide = {

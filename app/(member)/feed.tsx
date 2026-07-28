@@ -7,13 +7,14 @@ import { useFeed } from "@/hooks/useFeed";
 import { useAuth } from "@/hooks/useAuth";
 import { Ride } from "@/lib/types";
 
-function SharedRouteCard({ route }: { route: { id: string; title: string; distance_km: number; difficulty: string; elevation_m: number; is_shared: boolean } }) {
+function SharedRouteCard({ route }: { route: { id: string; title: string; distance_km: number; difficulty: string; elevation_m: number; is_shared: boolean; profile?: { full_name: string; username: string } } }) {
   return (
     <View style={styles.routeCard}>
       <View style={styles.routeHeader}>
         <Text style={styles.routeTitle}>{route.title}</Text>
         {route.is_shared ? <Text style={styles.sharedPill}>Shared</Text> : null}
       </View>
+      <Text style={styles.routeMember}>Shared by {route.profile?.full_name ?? "R3CC Member"}</Text>
       <Text style={styles.routeMeta}>{route.distance_km} km · {route.difficulty} · {route.elevation_m} m</Text>
     </View>
   );
@@ -21,8 +22,10 @@ function SharedRouteCard({ route }: { route: { id: string; title: string; distan
 
 export default function HomeFeedScreen() {
   const { rides, sharedRoutes, updateRide, deleteRide, reactToRide, commentOnRide } = useFeed();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const [editingRide, setEditingRide] = useState<Ride | null>(null);
+  const [deletingRide, setDeletingRide] = useState<Ride | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [caption, setCaption] = useState("");
 
   function startEditing(ride: Ride) {
@@ -37,12 +40,19 @@ export default function HomeFeedScreen() {
   }
 
   function confirmDelete(ride: Ride) {
-    Alert.alert("Delete ride?", "This removes the ride from the feed.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-        if (!await deleteRide(ride.id)) Alert.alert("Unable to delete ride", "Please try again.");
-      } }
-    ]);
+    setDeletingRide(ride);
+  }
+
+  async function deleteSelectedRide() {
+    if (!deletingRide || isDeleting) return;
+    setIsDeleting(true);
+    const result = await deleteRide(deletingRide.id);
+    setIsDeleting(false);
+    if (result.ok) {
+      setDeletingRide(null);
+      return;
+    }
+    Alert.alert("Unable to delete ride", result.error ?? "Please try again.");
   }
 
   return (
@@ -64,7 +74,7 @@ export default function HomeFeedScreen() {
             {sharedRoutes.map((route) => <SharedRouteCard key={route.id} route={route} />)}
           </View>
         ) : null}
-        {rides.map((ride) => <RideCard key={ride.id} ride={ride} canManage={ride.user_id === profile?.id} onEdit={() => startEditing(ride)} onDelete={() => confirmDelete(ride)} onReact={() => reactToRide(ride.id)} onComment={() => commentOnRide(ride.id)} />)}
+        {rides.map((ride) => <RideCard key={ride.id} ride={ride} canManage={ride.user_id === (session?.user.id ?? profile?.id)} onEdit={() => startEditing(ride)} onDelete={() => confirmDelete(ride)} onReact={() => reactToRide(ride.id)} onComment={() => commentOnRide(ride.id)} />)}
       </ScrollView>
       <Link href="/(member)/record" asChild><Pressable style={styles.fab}><Text style={styles.fabText}>BIKE</Text></Pressable></Link>
       <Modal visible={Boolean(editingRide)} transparent animationType="fade" onRequestClose={() => setEditingRide(null)}>
@@ -74,6 +84,16 @@ export default function HomeFeedScreen() {
           <View style={styles.modalActions}>
             <Pressable style={styles.cancelButton} onPress={() => setEditingRide(null)}><Text style={styles.buttonText}>Cancel</Text></Pressable>
             <Pressable style={styles.saveButton} onPress={saveEdit}><Text style={styles.buttonText}>Save</Text></Pressable>
+          </View>
+        </View></View>
+      </Modal>
+      <Modal visible={Boolean(deletingRide)} transparent animationType="fade" onRequestClose={() => setDeletingRide(null)}>
+        <View style={styles.modalBackdrop}><View style={styles.modal}>
+          <Text style={styles.modalTitle}>Delete ride?</Text>
+          <Text style={styles.modalMessage}>This permanently removes this ride and its photos from the feed.</Text>
+          <View style={styles.modalActions}>
+            <Pressable disabled={isDeleting} style={styles.cancelButton} onPress={() => setDeletingRide(null)}><Text style={styles.buttonText}>Cancel</Text></Pressable>
+            <Pressable disabled={isDeleting} style={[styles.deleteButton, isDeleting && styles.buttonDisabled]} onPress={deleteSelectedRide}><Text style={styles.buttonText}>{isDeleting ? "Deleting..." : "Delete"}</Text></Pressable>
           </View>
         </View></View>
       </Modal>
@@ -98,6 +118,7 @@ const styles = StyleSheet.create({
   routeTitle: { color: colors.text, fontWeight: "900" },
   sharedPill: { color: colors.primary, fontWeight: "900" },
   routeMeta: { color: colors.muted, marginTop: spacing.xs },
+  routeMember: { color: colors.text, fontWeight: "700" },
   fab: { position: "absolute", right: spacing.lg, bottom: spacing.lg, width: 68, height: 68, borderRadius: 34, alignItems: "center", justifyContent: "center", backgroundColor: colors.primary },
   fabText: { color: colors.text, fontWeight: "900", fontSize: 12 },
   modalBackdrop: { flex: 1, justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(0,0,0,0.65)" },
@@ -107,5 +128,8 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
   cancelButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.md, backgroundColor: colors.surfaceHigh },
   saveButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.md, backgroundColor: colors.primary },
+  deleteButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.md, backgroundColor: colors.primary },
+  buttonDisabled: { opacity: 0.6 },
+  modalMessage: { color: colors.muted, lineHeight: 21 },
   buttonText: { color: colors.text, fontWeight: "900" }
 });

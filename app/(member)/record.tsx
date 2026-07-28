@@ -23,12 +23,19 @@ export default function RideRecordingScreen() {
   }
 
   function openMoreOptions() {
-    router.push("/(member)/profile");
+    if (!ride.isRecording) {
+      router.push("/(member)/profile");
+      return;
+    }
+    Alert.alert("Stop recording?", "Opening another screen will stop and discard the active ride.", [
+      { text: "Keep recording", style: "cancel" },
+      { text: "Stop recording", style: "destructive", onPress: () => { ride.stop(); router.push("/(member)/profile"); } }
+    ]);
   }
 
   return (
     <View style={styles.screen}>
-      <View style={styles.mapLayer}><RouteMap coords={ride.coords} height={520} /></View>
+      <View style={styles.mapLayer}><RouteMap coords={ride.coords.length ? ride.coords : ride.navigationRoute} height={520} /></View>
       <View style={styles.topHud}>
         <Text style={[styles.rec, !ride.isRecording && styles.ready]}>{ride.isRecording ? "REC" : "READY"}</Text>
         <Text style={styles.timer}>{formatDuration(ride.elapsedSec)}</Text>
@@ -39,7 +46,7 @@ export default function RideRecordingScreen() {
         <StatsPanel stats={[{ label: "Distance", value: `${ride.distanceKm.toFixed(2)} km` }, { label: "Avg", value: `${(ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600)).toFixed(1)}` }, { label: "Top", value: `${ride.topSpeedKph.toFixed(1)}` }]} />
         {!permissionGranted ? <Text style={styles.warning}>Location permission is needed for live tracking.</Text> : null}
         <View style={styles.controls}>
-          {!ride.isRecording ? <Pressable style={[styles.control, styles.start]} onPress={ride.start}><Text style={styles.controlText}>Start Ride</Text></Pressable> : <>
+          {!ride.isRecording ? <Pressable style={[styles.control, styles.start]} onPress={ride.start}><Text style={styles.controlText}>{ride.navigationRoute.length ? "Start Ride" : "Start Ride"}</Text></Pressable> : <>
             <Pressable style={styles.control} onPress={ride.isPaused ? ride.resume : ride.pause}><Text style={styles.controlText}>{ride.isPaused ? "Resume" : "Pause"}</Text></Pressable>
             <Pressable style={[styles.control, styles.stop]} onPress={endRide}><Text style={styles.controlText}>Stop</Text></Pressable>
             <Pressable style={styles.control} onPress={openMoreOptions}><Text style={styles.controlText}>More</Text></Pressable>

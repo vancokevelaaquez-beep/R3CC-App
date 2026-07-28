@@ -143,6 +143,33 @@ returns boolean language sql stable security definer set search_path = public as
   select exists(select 1 from public.profiles where id = auth.uid() and status = 'approved');
 $$;
 
+-- Uses a security-definer function so an approved rider can reliably remove
+-- their own post even when RLS rules are later tightened.
+create or replace function public.delete_ride(target_ride_id uuid)
+returns boolean language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then
+    raise exception 'You must be signed in to delete a ride';
+  end if;
+
+  delete from public.rides
+  where id = target_ride_id
+    and (user_id = auth.uid() or public.is_admin());
+
+  return found;
+end;
+$$;
+
+grant execute on function public.delete_ride(uuid) to authenticated;
+
+insert into storage.buckets (id, name, public)
+values ('ride-photos', 'ride-photos', true)
+on conflict (id) do update set public = true;
+
+create policy "ride photos public read" on storage.objects for select using (bucket_id = 'ride-photos');
+create policy "ride photos member upload" on storage.objects for insert to authenticated
+  with check (bucket_id = 'ride-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
 alter table public.profiles enable row level security;
 alter table public.applications enable row level security;
 alter table public.rides enable row level security;
@@ -166,6 +193,7 @@ create policy "applications admin update" on public.applications for update usin
 create policy "rides approved members read" on public.rides for select using (public.is_approved_member() or public.is_admin());
 create policy "rides create own" on public.rides for insert with check (user_id = auth.uid() and public.is_approved_member());
 create policy "rides update own or admin" on public.rides for update using (user_id = auth.uid() or public.is_admin());
+create policy "rides delete own or admin" on public.rides for delete using (user_id = auth.uid() or public.is_admin());
 
 create policy "ride photos approved read" on public.ride_photos for select using (public.is_approved_member() or public.is_admin());
 create policy "ride photos own insert" on public.ride_photos for insert with check (user_id = auth.uid() and public.is_approved_member());

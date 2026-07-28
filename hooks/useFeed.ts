@@ -21,16 +21,32 @@ export function useFeed() {
 
     let mounted = true;
 
-    async function loadRides() {
+  async function loadRides() {
       setLoading(true);
       const { data } = await supabase
         .from("rides")
-        .select("*, profiles(full_name, username, avatar_url)")
+        .select("*, profiles(full_name, username, avatar_url), ride_photos(photo_url)")
         .eq("is_public", true)
         .order("created_at", { ascending: false });
 
       if (mounted && data) {
-        setRides(data as Ride[]);
+        const { data: { user } } = await supabase.auth.getUser();
+        const rideIds = data.map((ride) => ride.id);
+        const { data: likes } = rideIds.length
+          ? await supabase.from("likes").select("ride_id, user_id").in("ride_id", rideIds)
+          : { data: [] };
+        const likeCounts = new Map<string, number>();
+        const reactedRideIds = new Set<string>();
+        (likes ?? []).forEach((like) => {
+          likeCounts.set(like.ride_id, (likeCounts.get(like.ride_id) ?? 0) + 1);
+          if (like.user_id === user?.id) reactedRideIds.add(like.ride_id);
+        });
+        setRides((data as (Ride & { ride_photos?: { photo_url: string }[] })[]).map(({ ride_photos, ...ride }) => ({
+          ...ride,
+          photos: ride_photos?.map((photo) => photo.photo_url) ?? [],
+          like_count: likeCounts.get(ride.id) ?? 0,
+          reacted_by_me: reactedRideIds.has(ride.id)
+        })));
       }
       if (mounted) {
         setLoading(false);
@@ -40,9 +56,9 @@ export function useFeed() {
     async function loadRoutes() {
       const { data } = await supabase
         .from("routes")
-        .select("*")
+        .select("*, profiles!routes_created_by_fkey(full_name, username, avatar_url)")
         .eq("is_shared", true)
-        .order("updated_at", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (mounted && data) {
         setSharedRoutes(data as RoutePlan[]);
@@ -85,32 +101,58 @@ export function useFeed() {
     return true;
   }
 
-  async function deleteRide(rideId: string) {
+  async function deleteRide(rideId: string): Promise<{ ok: boolean; error?: string }> {
     const previousRides = rides;
     setRides((current) => current.filter((ride) => ride.id !== rideId));
     if (!hasSupabaseConfig) {
       demoRides = demoRides.filter((ride) => ride.id !== rideId);
-      return true;
+      return { ok: true };
     }
 
-    const { error } = await supabase.from("rides").delete().eq("id", rideId);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setRides(previousRides);
+      return { ok: false, error: "Your session has expired. Please sign in again." };
+    }
+    const { data, error } = await supabase
+      .from("rides")
+      .delete()
+      .eq("id", rideId)
+      .eq("user_id", user.id)
+      .select("id");
     if (error) {
       setRides(previousRides);
-      return false;
+      return { ok: false, error: error.message };
     }
-    return true;
+    if (!data) {
+      setRides(previousRides);
+      return { ok: false, error: "Only the rider who created this post can delete it." };
+    }
+    return { ok: true };
   }
 
   async function reactToRide(rideId: string) {
     const ride = rides.find((item) => item.id === rideId);
     if (!ride) return false;
-    const likeCount = (ride.like_count ?? 0) + 1;
-    setRides((current) => current.map((item) => item.id === rideId ? { ...item, like_count: likeCount } : item));
+    const wasReacted = Boolean(ride.reacted_by_me);
+    const likeCount = Math.max(0, (ride.like_count ?? 0) + (wasReacted ? -1 : 1));
+    const previousRides = rides;
+    setRides((current) => current.map((item) => item.id === rideId ? { ...item, like_count: likeCount, reacted_by_me: !wasReacted } : item));
     if (hasSupabaseConfig) {
-      const { error } = await supabase.from("rides").update({ like_count: likeCount }).eq("id", rideId);
-      if (error) return false;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setRides(previousRides);
+        return false;
+      }
+      const { error } = wasReacted
+        ? await supabase.from("likes").delete().eq("ride_id", rideId).eq("user_id", user.id)
+        : await supabase.from("likes").insert({ ride_id: rideId, user_id: user.id });
+      if (error) {
+        setRides(previousRides);
+        return false;
+      }
     } else {
-      demoRides = demoRides.map((item) => item.id === rideId ? { ...item, like_count: likeCount } : item);
+      demoRides = demoRides.map((item) => item.id === rideId ? { ...item, like_count: likeCount, reacted_by_me: !wasReacted } : item);
     }
     return true;
   }

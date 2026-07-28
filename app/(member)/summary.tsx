@@ -18,6 +18,7 @@ export default function RideSummaryScreen() {
   const { profile } = useAuth();
   const [caption, setCaption] = useState("#r3cc #cycling");
   const [photos, setPhotos] = useState<ImagePickerAsset[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   async function addPhotos(fromCamera: boolean) {
     const permission = fromCamera
@@ -29,8 +30,8 @@ export default function RideSummaryScreen() {
     }
 
     const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, allowsMultipleSelection: true });
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8, allowsMultipleSelection: true });
     if (!result.canceled) setPhotos((current) => [...current, ...result.assets]);
   }
 
@@ -48,6 +49,8 @@ export default function RideSummaryScreen() {
   }
 
   async function saveRide(isPublic: boolean) {
+    if (isSaving) return;
+    setIsSaving(true);
     if (!hasSupabaseConfig) {
       if (isPublic) {
         addDemoRide({
@@ -67,53 +70,53 @@ export default function RideSummaryScreen() {
         });
       }
       ride.reset();
+      setIsSaving(false);
       router.replace("/(member)/feed");
       return;
     }
-
-    const sessionResponse = await supabase.auth.getSession();
-    const userId = sessionResponse.data?.session?.user?.id;
-    if (!userId) {
-      notifyError("Unable to save ride: not signed in.");
-      return;
-    }
-
-    if (!profile?.status || profile.status !== "approved") {
-      notifyError("Your account must be approved before saving rides.");
-      return;
-    }
-
-    let photoUrls: string[] = [];
     try {
-      photoUrls = await uploadPhotos(userId);
+      const sessionResponse = await supabase.auth.getSession();
+      const userId = sessionResponse.data?.session?.user?.id;
+      if (!userId) throw new Error("Unable to save ride: not signed in.");
+      if (profile?.status !== "approved") throw new Error("Your account must be approved before saving rides.");
+
+      const { data: savedRide, error } = await supabase.from("rides").insert({
+        user_id: userId,
+        title: "R3CC Ride",
+        distance_km: ride.distanceKm,
+        duration_sec: ride.elapsedSec,
+        avg_speed: ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600),
+        top_speed: ride.topSpeedKph,
+        elevation_m: 0,
+        route_coords: ride.coords,
+        is_public: isPublic,
+        caption
+      }).select("id").single();
+      if (error || !savedRide) throw error ?? new Error("The ride could not be saved.");
+
+      let photoWarning = "";
+      if (photos.length) {
+        try {
+          const photoUrls = await uploadPhotos(userId);
+          if (photoUrls.length) {
+            const { error: photoError } = await supabase.from("ride_photos").insert(photoUrls.map((photo_url) => ({ ride_id: savedRide.id, user_id: userId, photo_url })));
+            if (photoError) throw photoError;
+          }
+        } catch (photoError) {
+          console.error(photoError);
+          photoWarning = " Your ride was shared, but the attached photo could not be uploaded.";
+        }
+      }
+
+      notifySuccess(`${isPublic ? "Ride shared to feed." : "Ride saved successfully."}${photoWarning}`);
+      ride.reset();
+      router.replace("/(member)/feed");
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : "Failed to upload ride photos.");
-      return;
-    }
-
-    const { error } = await supabase.from("rides").insert({
-      user_id: userId,
-      title: "R3CC Ride",
-      distance_km: ride.distanceKm,
-      duration_sec: ride.elapsedSec,
-      avg_speed: ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600),
-      top_speed: ride.topSpeedKph,
-      elevation_m: 0,
-      route_coords: ride.coords,
-      is_public: isPublic,
-      caption,
-      photos: photoUrls
-    });
-
-    if (error) {
-      notifyError(error.message || "Failed to save ride.");
+      notifyError(error instanceof Error ? error.message : "Failed to save ride.");
       console.error(error);
-      return;
+    } finally {
+      setIsSaving(false);
     }
-
-    notifySuccess(isPublic ? "Ride shared to feed." : "Ride saved successfully.");
-    ride.reset();
-    router.replace("/(member)/feed");
   }
 
   return (
@@ -134,8 +137,8 @@ export default function RideSummaryScreen() {
         </Pressable>)}
       </ScrollView> : null}
       <View style={styles.tags}><Text style={styles.tag}>#r3cc</Text><Text style={styles.tag}>#cycling</Text></View>
-      <Pressable style={styles.button} onPress={() => saveRide(false)}><Text style={styles.buttonText}>Save Ride</Text></Pressable>
-      <Pressable style={styles.buttonAlt} onPress={() => saveRide(true)}><Text style={styles.buttonText}>Share to Feed</Text></Pressable>
+      <Pressable disabled={isSaving} style={[styles.button, isSaving && styles.buttonDisabled]} onPress={() => saveRide(false)}><Text style={styles.buttonText}>{isSaving ? "Saving..." : "Save Ride"}</Text></Pressable>
+      <Pressable disabled={isSaving} style={[styles.buttonAlt, isSaving && styles.buttonDisabled]} onPress={() => saveRide(true)}><Text style={styles.buttonText}>{isSaving ? "Saving..." : "Share to Feed"}</Text></Pressable>
     </ScrollView>
   );
 }
@@ -159,5 +162,6 @@ const styles = StyleSheet.create({
   tag: { color: colors.text, backgroundColor: colors.surfaceHigh, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radii.pill, overflow: "hidden" },
   button: { alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.primary },
   buttonAlt: { alignItems: "center", padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceHigh },
+  buttonDisabled: { opacity: 0.6 },
   buttonText: { color: colors.text, fontWeight: "900" }
 });

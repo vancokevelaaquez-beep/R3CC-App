@@ -11,7 +11,9 @@ type RideState = {
   currentSpeedKph: number;
   topSpeedKph: number;
   photos: string[];
+  navigationRoute: LatLngPoint[];
   start: () => void;
+  setNavigationRoute: (coords: LatLngPoint[]) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
@@ -29,12 +31,14 @@ const initial = {
   distanceKm: 0,
   currentSpeedKph: 0,
   topSpeedKph: 0,
-  photos: []
+  photos: [],
+  navigationRoute: []
 };
 
 export const useRideStore = create<RideState>((set, get) => ({
   ...initial,
-  start: () => set({ ...initial, isRecording: true }),
+  start: () => set((state) => ({ ...initial, isRecording: true, navigationRoute: state.navigationRoute })),
+  setNavigationRoute: (navigationRoute) => set({ navigationRoute }),
   pause: () => set({ isPaused: true, currentSpeedKph: 0 }),
   resume: () => set({ isPaused: false }),
   stop: () => set({ isRecording: false, isPaused: false, currentSpeedKph: 0 }),
