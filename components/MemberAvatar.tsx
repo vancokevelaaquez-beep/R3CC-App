@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+﻿import { Image, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/constants/theme";
 
 type Props = {
@@ -20,7 +20,7 @@ export function MemberAvatar({ name, uri, size = 44 }: Props) {
   }
 
   return (
-    <View style={[styles.avatar, styles.fallback, { width: size, height: size, borderRadius: size / 2 }]}>
+    <View style={[styles.avatar, styles.fallback, { width: size, height: size, borderRadius: size / 2 }]}> 
       <Text style={styles.initials}>{initials}</Text>
     </View>
   );
@@ -28,8 +28,9 @@ export function MemberAvatar({ name, uri, size = 44 }: Props) {
 
 const styles = StyleSheet.create({
   avatar: {
-    borderWidth: 1,
-    borderColor: colors.border
+    borderWidth: 3,
+    borderColor: colors.primary,
+    overflow: "hidden"
   },
   fallback: {
     alignItems: "center",
@@ -38,6 +39,7 @@ const styles = StyleSheet.create({
   },
   initials: {
     color: colors.text,
-    fontWeight: "800"
+    fontWeight: "800",
+    fontSize: 20
   }
 });

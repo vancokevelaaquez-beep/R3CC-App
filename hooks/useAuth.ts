@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Session } from "@supabase/supabase-js";
-import { hasSupabaseConfig, supabase } from "@/lib/supabase";
+import { demoModeEnabled, supabase } from "@/lib/supabase";
 import { Profile, ProfileStatus, Role } from "@/lib/types";
 
 type AuthState = {
@@ -33,11 +33,11 @@ const demoProfile: Profile = {
 
 export function useAuth(): AuthState {
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(hasSupabaseConfig ? null : demoProfile);
+  const [profile, setProfile] = useState<Profile | null>(demoModeEnabled ? demoProfile : null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!hasSupabaseConfig) {
+    if (demoModeEnabled) {
       setLoading(false);
       return;
     }
@@ -56,7 +56,7 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     async function loadProfile() {
-      if (!hasSupabaseConfig || !session?.user.id) {
+      if (demoModeEnabled || !session?.user.id) {
         return;
       }
 
@@ -73,7 +73,7 @@ export function useAuth(): AuthState {
       profile,
       loading,
       signIn: async (email, password) => {
-        if (!hasSupabaseConfig) {
+        if (demoModeEnabled) {
           const role: Role = email.includes("admin") ? "admin" : "member";
           const nextProfile = { ...demoProfile, email, role, status: "approved" as ProfileStatus };
           setProfile(nextProfile);
@@ -114,11 +114,11 @@ export function useAuth(): AuthState {
         return { role: profileData.role as Role, status: profileData.status as ProfileStatus };
       },
       signOut: async () => {
-        if (hasSupabaseConfig) {
+        if (!demoModeEnabled) {
           await supabase.auth.signOut();
         }
         setSession(null);
-        setProfile(hasSupabaseConfig ? null : demoProfile);
+        setProfile(demoModeEnabled ? demoProfile : null);
       },
       changePassword: async (newPassword) => {
         if (!newPassword.trim()) {
@@ -129,7 +129,7 @@ export function useAuth(): AuthState {
           throw new Error("Password must be at least 6 characters long.");
         }
 
-        if (!hasSupabaseConfig) {
+        if (demoModeEnabled) {
           return;
         }
 
@@ -139,7 +139,7 @@ export function useAuth(): AuthState {
         }
       },
       updateProfile: async (updates) => {
-        if (!hasSupabaseConfig) {
+        if (demoModeEnabled) {
           setProfile((current) => current ? { ...current, ...updates } : current);
           return;
         }

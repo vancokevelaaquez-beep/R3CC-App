@@ -9,20 +9,22 @@ import { StatsPanel } from "./StatsPanel";
 type Props = {
   ride: Ride;
   canManage?: boolean;
+  saved?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
+  onSave?: () => void;
   onReact?: () => void;
   onComment?: (comment: string) => void;
 };
 
-export function RideCard({ ride, canManage, onEdit, onDelete, onReact, onComment }: Props) {
+export function RideCard({ ride, canManage, saved, onEdit, onDelete, onSave, onReact, onComment }: Props) {
   const name = ride.profile?.full_name ?? "R3CC Member";
   const [menuOpen, setMenuOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState<string[]>([]);
 
   async function shareRide() {
-    await Share.share({ message: `${name}'s ride: ${ride.title} â€” ${ride.distance_km.toFixed(1)} km. ${ride.caption ?? ""}` });
+    await Share.share({ message: `${name}'s ride: ${ride.title} — ${ride.distance_km.toFixed(1)} km. ${ride.caption ?? ""}` });
   }
 
   function submitComment() {
@@ -33,24 +35,28 @@ export function RideCard({ ride, canManage, onEdit, onDelete, onReact, onComment
   }
 
   return (
-    <Pressable style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.header}>
         <MemberAvatar name={name} uri={ride.profile?.avatar_url} />
         <View style={styles.headerText}>
           <Text style={styles.name}>{name}</Text>
-          <Text style={styles.meta}>@{ride.profile?.username ?? "member"} | {formatDuration(ride.duration_sec)}</Text>
+          <Text style={styles.meta}>@{ride.profile?.username ?? "member"} • {formatDuration(ride.duration_sec)}</Text>
         </View>
         {canManage ? (
           <View style={styles.menuWrap}>
-            <Pressable style={styles.moreButton} onPress={() => setMenuOpen((open) => !open)} accessibilityLabel="Ride options">
-              <Text style={styles.more}>â€¢â€¢â€¢</Text>
+            <Pressable style={styles.moreButton} onPress={() => setMenuOpen((open) => !open)} accessibilityRole="button" accessibilityLabel="Ride options">
+              <Text style={styles.more}>•••</Text>
             </Pressable>
           </View>
-        ) : <Text style={styles.more}>...</Text>}
+        ) : (
+          <Text style={styles.more}>...</Text>
+        )}
       </View>
       {ride.photos?.length ? (
         <View style={styles.photos}>
-          {ride.photos.map((photo) => <Image key={photo} source={{ uri: photo }} style={styles.photo} />)}
+          {ride.photos.map((photo) => (
+            <Image key={photo} source={{ uri: photo }} style={styles.photo} />
+          ))}
         </View>
       ) : null}
       <Text style={styles.caption}>{ride.caption}</Text>
@@ -62,31 +68,64 @@ export function RideCard({ ride, canManage, onEdit, onDelete, onReact, onComment
         ]}
       />
       <View style={styles.actions}>
-        <Pressable onPress={onReact}><Text style={[styles.action, ride.reacted_by_me && styles.reacted]}>React {ride.like_count ?? 0}</Text></Pressable>
-        <Pressable onPress={submitComment}><Text style={styles.action}>Comment {ride.comment_count ?? 0}</Text></Pressable>
-        <Pressable onPress={shareRide}><Text style={styles.action}>Share</Text></Pressable>
+        <Pressable onPress={onReact} style={styles.actionButton} accessibilityRole="button" accessibilityLabel="React to ride">
+          <Text style={[styles.action, ride.reacted_by_me && styles.reacted]}>{ride.reacted_by_me ? "Liked" : "Like"} {ride.like_count ?? 0}</Text>
+        </Pressable>
+        <Pressable onPress={submitComment} style={styles.actionButton} accessibilityRole="button" accessibilityLabel="Comment on ride">
+          <Text style={styles.action}>Comment {ride.comment_count ?? 0}</Text>
+        </Pressable>
+        <Pressable onPress={shareRide} style={styles.actionButton} accessibilityRole="button" accessibilityLabel="Share ride">
+          <Text style={styles.action}>Share</Text>
+        </Pressable>
+        {onSave ? (
+          <Pressable onPress={onSave} style={styles.actionButton} accessibilityRole="button" accessibilityLabel={saved ? "Unsave post" : "Save post"}>
+            <Text style={[styles.action, saved && styles.saved]}>{saved ? "Saved" : "Save"}</Text>
+          </Pressable>
+        ) : null}
       </View>
       <View style={styles.commentRow}>
-        <TextInput value={comment} onChangeText={setComment} onSubmitEditing={submitComment} placeholder="Write a comment" placeholderTextColor={colors.dim} style={styles.commentInput} />
-        <Pressable onPress={submitComment}><Text style={styles.postComment}>Post</Text></Pressable>
+        <TextInput
+          value={comment}
+          onChangeText={setComment}
+          onSubmitEditing={submitComment}
+          placeholder="Write a comment"
+          placeholderTextColor={colors.dim}
+          style={styles.commentInput}
+          returnKeyType="send"
+        />
+        <Pressable onPress={submitComment} style={styles.postCommentButton} accessibilityRole="button" accessibilityLabel="Post comment">
+          <Text style={styles.postComment}>Post</Text>
+        </Pressable>
       </View>
-      {comments.map((item, index) => <Text key={`${item}-${index}`} style={styles.commentText}>{item}</Text>)}
+      {comments.length ? (
+        <View style={styles.commentThread}>
+          {comments.map((item, index) => (
+            <Text key={`${item}-${index}`} style={styles.commentText}>• {item}</Text>
+          ))}
+        </View>
+      ) : null}
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.menu}>
-            <Pressable style={styles.menuItem} onPress={() => { setMenuOpen(false); onEdit?.(); }}><Text style={styles.menuText}>Edit ride</Text></Pressable>
-            <Pressable style={styles.menuItem} onPress={() => { setMenuOpen(false); onDelete?.(); }}><Text style={[styles.menuText, styles.deleteAction]}>Delete ride</Text></Pressable>
-            <Pressable style={styles.cancelItem} onPress={() => setMenuOpen(false)}><Text style={styles.menuText}>Cancel</Text></Pressable>
+            <Pressable style={styles.menuItem} onPress={() => { setMenuOpen(false); onEdit?.(); }}>
+              <Text style={styles.menuText}>Edit ride</Text>
+            </Pressable>
+            <Pressable style={styles.menuItem} onPress={() => { setMenuOpen(false); onDelete?.(); }}>
+              <Text style={[styles.menuText, styles.deleteAction]}>Delete ride</Text>
+            </Pressable>
+            <Pressable style={styles.cancelItem} onPress={() => setMenuOpen(false)}>
+              <Text style={styles.menuText}>Cancel</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing.md,
+    gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
@@ -124,11 +163,11 @@ const styles = StyleSheet.create({
   cancelItem: { alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: spacing.md, backgroundColor: colors.surfaceHigh },
   menuText: { color: colors.text, fontSize: 15, fontWeight: "800" },
   deleteAction: { color: colors.primary },
-  photos: { gap: spacing.sm },
+  photos: { gap: spacing.sm, overflow: "hidden" },
   photo: {
     width: "100%",
-    aspectRatio: 4 / 3,
-    borderRadius: radii.sm,
+    aspectRatio: 16 / 9,
+    borderRadius: radii.md,
     backgroundColor: colors.surfaceHigh,
     resizeMode: "cover"
   },
@@ -138,15 +177,21 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
     justifyContent: "space-between"
   },
+  actionButton: { paddingVertical: 8 },
   action: {
     color: colors.muted,
     fontWeight: "700"
   },
   reacted: { color: colors.primary },
+  saved: { color: colors.primary },
   commentRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   commentInput: { flex: 1, minHeight: 40, paddingHorizontal: spacing.sm, borderRadius: radii.sm, color: colors.text, backgroundColor: colors.surfaceHigh },
+  postCommentButton: { paddingHorizontal: spacing.md, paddingVertical: 12, borderRadius: radii.sm, backgroundColor: colors.surfaceHigh },
   postComment: { color: colors.primary, fontWeight: "900" },
+  commentThread: { gap: spacing.xs },
   commentText: { color: colors.muted, fontSize: 13 }
 });

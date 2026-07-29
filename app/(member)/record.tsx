@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+﻿import { router } from "expo-router";
 import { useEffect } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { RouteMap } from "@/components/RouteMap";
@@ -35,22 +35,43 @@ export default function RideRecordingScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.mapLayer}><RouteMap coords={ride.coords.length ? ride.coords : ride.navigationRoute} height={520} /></View>
-      <View style={styles.topHud}>
-        <Text style={[styles.rec, !ride.isRecording && styles.ready]}>{ride.isRecording ? "REC" : "READY"}</Text>
-        <Text style={styles.timer}>{formatDuration(ride.elapsedSec)}</Text>
+      <View style={styles.mapContainer}>
+        <View style={styles.mapCard}>
+          <RouteMap coords={ride.coords.length ? ride.coords : ride.navigationRoute} height={520} />
+        </View>
       </View>
-      <View style={styles.bottomPanel}>
-        <Text style={styles.speed}>{ride.currentSpeedKph.toFixed(1)}</Text>
-        <Text style={styles.speedLabel}>kph</Text>
-        <StatsPanel stats={[{ label: "Distance", value: `${ride.distanceKm.toFixed(2)} km` }, { label: "Avg", value: `${(ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600)).toFixed(1)}` }, { label: "Top", value: `${ride.topSpeedKph.toFixed(1)}` }]} />
+
+      <View style={styles.statsPanelWrap}>
+        <View style={styles.headerRow}>
+          <Text style={styles.sectionTitle}>Live ride</Text>
+          <Text style={styles.sectionMeta}>{ride.coords.length ? "Tracking" : "Ready to start"}</Text>
+        </View>
+        <View style={styles.speedRow}>
+          <View>
+            <Text style={styles.speedValue}>{ride.currentSpeedKph.toFixed(1)}</Text>
+            <Text style={styles.speedLabel}>kph</Text>
+          </View>
+          <View style={styles.summaryBlock}>
+            <Text style={styles.summaryLabel}>Distance</Text>
+            <Text style={styles.summaryValue}>{ride.distanceKm.toFixed(1)} km</Text>
+          </View>
+        </View>
+        <StatsPanel stats={[
+          { label: "Avg", value: `${(ride.distanceKm / Math.max(ride.elapsedSec / 3600, 1 / 3600)).toFixed(1)} km/h` },
+          { label: "Top", value: `${ride.topSpeedKph.toFixed(1)} km/h` },
+          { label: "Time", value: formatDuration(ride.elapsedSec) }
+        ]} />
         {!permissionGranted ? <Text style={styles.warning}>Location permission is needed for live tracking.</Text> : null}
         <View style={styles.controls}>
-          {!ride.isRecording ? <Pressable style={[styles.control, styles.start]} onPress={ride.start}><Text style={styles.controlText}>{ride.navigationRoute.length ? "Start Ride" : "Start Ride"}</Text></Pressable> : <>
-            <Pressable style={styles.control} onPress={ride.isPaused ? ride.resume : ride.pause}><Text style={styles.controlText}>{ride.isPaused ? "Resume" : "Pause"}</Text></Pressable>
-            <Pressable style={[styles.control, styles.stop]} onPress={endRide}><Text style={styles.controlText}>Stop</Text></Pressable>
-            <Pressable style={styles.control} onPress={openMoreOptions}><Text style={styles.controlText}>More</Text></Pressable>
-          </>}
+          {!ride.isRecording ? (
+            <Pressable style={[styles.control, styles.start]} onPress={ride.start}><Text style={styles.controlText}>Start ride</Text></Pressable>
+          ) : (
+            <>
+              <Pressable style={[styles.control, styles.secondary]} onPress={ride.isPaused ? ride.resume : ride.pause}><Text style={styles.controlText}>{ride.isPaused ? "Resume" : "Pause"}</Text></Pressable>
+              <Pressable style={[styles.control, styles.stop]} onPress={endRide}><Text style={styles.controlText}>Stop</Text></Pressable>
+              <Pressable style={[styles.control, styles.secondary]} onPress={openMoreOptions}><Text style={styles.controlText}>More</Text></Pressable>
+            </>
+          )}
         </View>
       </View>
     </View>
@@ -59,18 +80,23 @@ export default function RideRecordingScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  mapLayer: { flex: 1, backgroundColor: colors.surfaceHigh },
-  topHud: { position: "absolute", top: 54, left: spacing.lg, right: spacing.lg, flexDirection: "row", justifyContent: "space-between" },
-  rec: { color: colors.text, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radii.pill, overflow: "hidden", fontWeight: "900" },
-  ready: { backgroundColor: colors.surfaceHigh },
-  timer: { color: colors.text, fontSize: 18, fontWeight: "900", backgroundColor: "rgba(0,0,0,0.45)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: radii.pill, overflow: "hidden" },
-  bottomPanel: { position: "absolute", left: spacing.md, right: spacing.md, bottom: spacing.lg, gap: spacing.md, padding: spacing.md, borderRadius: radii.lg, backgroundColor: "rgba(22,22,22,0.9)", borderWidth: 1, borderColor: colors.border },
-  speed: { color: colors.text, fontSize: 72, lineHeight: 78, fontWeight: "900", textAlign: "center" },
-  speedLabel: { color: colors.muted, textAlign: "center", marginTop: -16 },
+  mapContainer: { flex: 1, padding: spacing.md },
+  mapCard: { flex: 1, borderRadius: radii.lg, overflow: "hidden", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: 0.26, shadowRadius: 18, shadowOffset: { width: 0, height: 12 }, elevation: 12 },
+  statsPanelWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.lg, gap: spacing.sm },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  sectionTitle: { color: colors.text, fontSize: 22, fontWeight: "900" },
+  sectionMeta: { color: colors.muted, fontSize: 12, textTransform: "uppercase", letterSpacing: 1 },
+  speedRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: spacing.sm },
+  speedValue: { color: colors.text, fontSize: 60, fontWeight: "900" },
+  speedLabel: { color: colors.muted, fontSize: 14, marginBottom: 6 },
+  summaryBlock: { alignItems: "flex-end" },
+  summaryLabel: { color: colors.muted, fontSize: 12 },
+  summaryValue: { color: colors.text, fontSize: 18, fontWeight: "900" },
   warning: { color: colors.warning, textAlign: "center" },
-  controls: { flexDirection: "row", gap: spacing.xs },
-  control: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radii.sm, backgroundColor: colors.surfaceHigh },
-  stop: { backgroundColor: colors.primary },
+  controls: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+  control: { flex: 1, minHeight: 52, borderRadius: radii.lg, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceHigh },
   start: { backgroundColor: colors.primary },
-  controlText: { color: colors.text, fontWeight: "900", fontSize: 12 }
+  stop: { backgroundColor: colors.primaryDark },
+  secondary: { backgroundColor: colors.surface },
+  controlText: { color: colors.text, fontWeight: "900", textTransform: "uppercase", fontSize: 13 }
 });

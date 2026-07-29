@@ -3,6 +3,7 @@ import { rides as fallbackRides, routes as fallbackRoutes } from "@/lib/mockData
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
 import { Ride, RoutePlan } from "@/lib/types";
 
+const PAGE_SIZE = 6;
 let demoRides = [...fallbackRides];
 
 export function addDemoRide(ride: Ride) {
@@ -13,10 +14,28 @@ export function getDemoSavedRides(userId?: string) {
   return demoRides.filter((ride) => !ride.is_public && (!userId || ride.user_id === userId));
 }
 
+function hydrateFeeds(rawRides: any[], userId?: string): Ride[] {
+  const rideIds = rawRides.map((ride) => ride.id);
+  return rawRides.map((ride) => ({
+    ...ride,
+    profile: ride.profiles,
+    photos: ride.ride_photos?.map((photo: any) => photo.photo_url) ?? [],
+    like_count: 0,
+    reacted_by_me: false,
+    comment_count: ride.comment_count ?? 0
+  }));
+}
+
 export function useFeed() {
-  const [rides, setRides] = useState<Ride[]>(demoRides.filter((ride) => ride.is_public !== false));
+  const demoPublicRides = demoRides.filter((ride) => ride.is_public !== false);
+  const [rides, setRides] = useState<Ride[]>(demoPublicRides.slice(0, PAGE_SIZE));
   const [sharedRoutes, setSharedRoutes] = useState<RoutePlan[]>(fallbackRoutes.filter((route) => route.is_shared));
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(demoPublicRides.length > PAGE_SIZE);
+  const [page, setPage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasSupabaseConfig) {
@@ -25,35 +44,69 @@ export function useFeed() {
 
     let mounted = true;
 
-  async function loadRides() {
-      setLoading(true);
-      const { data } = await supabase
-        .from("rides")
-        .select("*, profiles(full_name, username, avatar_url), ride_photos(photo_url)")
-        .eq("is_public", true)
-        .order("created_at", { ascending: false });
+    async function fetchRides(pageIndex = 0) {
+      if (pageIndex === 0) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setLoadingMore(true);
+      }
 
-      if (mounted && data) {
+      try {
+        const start = pageIndex * PAGE_SIZE;
+        const end = start + PAGE_SIZE - 1;
+
+        const { data } = await supabase
+          .from("rides")
+          .select("*, profiles(full_name, username, avatar_url), ride_photos(photo_url)")
+          .eq("is_public", true)
+          .order("created_at", { ascending: false })
+          .range(start, end);
+
+        if (!mounted || !data) {
+          return;
+        }
+
         const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id;
         const rideIds = data.map((ride) => ride.id);
-        const { data: likes } = rideIds.length
+
+        const { data: likeData } = rideIds.length
           ? await supabase.from("likes").select("ride_id, user_id").in("ride_id", rideIds)
           : { data: [] };
+
         const likeCounts = new Map<string, number>();
         const reactedRideIds = new Set<string>();
-        (likes ?? []).forEach((like) => {
+
+        (likeData ?? []).forEach((like) => {
           likeCounts.set(like.ride_id, (likeCounts.get(like.ride_id) ?? 0) + 1);
-          if (like.user_id === user?.id) reactedRideIds.add(like.ride_id);
+          if (like.user_id === userId) {
+            reactedRideIds.add(like.ride_id);
+          }
         });
-        setRides((data as (Ride & { ride_photos?: { photo_url: string }[] })[]).map(({ ride_photos, ...ride }) => ({
+
+        const pageRides = (data as any[]).map((ride) => ({
           ...ride,
-          photos: ride_photos?.map((photo) => photo.photo_url) ?? [],
+          profile: ride.profiles,
+          photos: ride.ride_photos?.map((photo: any) => photo.photo_url) ?? [],
           like_count: likeCounts.get(ride.id) ?? 0,
-          reacted_by_me: reactedRideIds.has(ride.id)
-        })));
-      }
-      if (mounted) {
-        setLoading(false);
+          reacted_by_me: reactedRideIds.has(ride.id),
+          comment_count: ride.comment_count ?? 0
+        })) as Ride[];
+
+        setRides((current) => (pageIndex === 0 ? pageRides : [...current, ...pageRides]));
+        setPage(pageIndex);
+        setHasMore(pageRides.length === PAGE_SIZE);
+      } catch (fetchError) {
+        if (mounted) {
+          setError(fetchError instanceof Error ? fetchError.message : "Unable to load feed.");
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
       }
     }
 
@@ -69,12 +122,12 @@ export function useFeed() {
       }
     }
 
-    loadRides();
+    fetchRides(0);
     loadRoutes();
 
     const ridesChannel = supabase
       .channel("rides-feed")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, loadRides)
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, () => fetchRides(0))
       .subscribe();
 
     const routesChannel = supabase
@@ -89,11 +142,43 @@ export function useFeed() {
     };
   }, []);
 
+  async function refreshFeed() {
+    if (hasSupabaseConfig) {
+      setRefreshing(true);
+      await fetchRides(0);
+      return;
+    }
+
+    const demoPublicRides = demoRides.filter((ride) => ride.is_public !== false);
+    setRides(demoPublicRides.slice(0, PAGE_SIZE));
+    setPage(0);
+    setHasMore(demoPublicRides.length > PAGE_SIZE);
+  }
+
+  async function loadMore() {
+    if (loadingMore || loading || !hasMore) {
+      return;
+    }
+
+    if (!hasSupabaseConfig) {
+      const demoPublicRides = demoRides.filter((ride) => ride.is_public !== false);
+      const nextPage = page + 1;
+      const nextRides = demoPublicRides.slice(nextPage * PAGE_SIZE, nextPage * PAGE_SIZE + PAGE_SIZE);
+      setRides((current) => [...current, ...nextRides]);
+      setPage(nextPage);
+      setHasMore(nextRides.length === PAGE_SIZE);
+      return;
+    }
+
+    setLoadingMore(true);
+    await fetchRides(page + 1);
+  }
+
   async function updateRide(rideId: string, updates: Partial<Pick<Ride, "caption" | "photos">>) {
     const previousRides = rides;
-    setRides((current) => current.map((ride) => ride.id === rideId ? { ...ride, ...updates } : ride));
+    setRides((current) => current.map((ride) => (ride.id === rideId ? { ...ride, ...updates } : ride)));
     if (!hasSupabaseConfig) {
-      demoRides = demoRides.map((ride) => ride.id === rideId ? { ...ride, ...updates } : ride);
+      demoRides = demoRides.map((ride) => (ride.id === rideId ? { ...ride, ...updates } : ride));
       return true;
     }
 
@@ -124,13 +209,9 @@ export function useFeed() {
       .eq("id", rideId)
       .eq("user_id", user.id)
       .select("id");
-    if (error) {
+    if (error || !data) {
       setRides(previousRides);
-      return { ok: false, error: error.message };
-    }
-    if (!data) {
-      setRides(previousRides);
-      return { ok: false, error: "Only the rider who created this post can delete it." };
+      return { ok: false, error: error?.message ?? "Only the rider who created this post can delete it." };
     }
     return { ok: true };
   }
@@ -141,7 +222,7 @@ export function useFeed() {
     const wasReacted = Boolean(ride.reacted_by_me);
     const likeCount = Math.max(0, (ride.like_count ?? 0) + (wasReacted ? -1 : 1));
     const previousRides = rides;
-    setRides((current) => current.map((item) => item.id === rideId ? { ...item, like_count: likeCount, reacted_by_me: !wasReacted } : item));
+    setRides((current) => current.map((item) => (item.id === rideId ? { ...item, like_count: likeCount, reacted_by_me: !wasReacted } : item)));
     if (hasSupabaseConfig) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -156,7 +237,7 @@ export function useFeed() {
         return false;
       }
     } else {
-      demoRides = demoRides.map((item) => item.id === rideId ? { ...item, like_count: likeCount, reacted_by_me: !wasReacted } : item);
+      demoRides = demoRides.map((item) => (item.id === rideId ? { ...item, like_count: likeCount, reacted_by_me: !wasReacted } : item));
     }
     return true;
   }
@@ -165,15 +246,34 @@ export function useFeed() {
     const ride = rides.find((item) => item.id === rideId);
     if (!ride) return false;
     const commentCount = (ride.comment_count ?? 0) + 1;
-    setRides((current) => current.map((item) => item.id === rideId ? { ...item, comment_count: commentCount } : item));
+    const previousRides = rides;
+    setRides((current) => current.map((item) => (item.id === rideId ? { ...item, comment_count: commentCount } : item)));
     if (hasSupabaseConfig) {
       const { error } = await supabase.from("rides").update({ comment_count: commentCount }).eq("id", rideId);
-      if (error) return false;
+      if (error) {
+        setRides(previousRides);
+        return false;
+      }
     } else {
-      demoRides = demoRides.map((item) => item.id === rideId ? { ...item, comment_count: commentCount } : item);
+      demoRides = demoRides.map((item) => (item.id === rideId ? { ...item, comment_count: commentCount } : item));
     }
     return true;
   }
 
-  return { rides, sharedRoutes, loading, updateRide, deleteRide, reactToRide, commentOnRide };
+  return {
+    rides,
+    sharedRoutes,
+    loading,
+    loadingMore,
+    refreshing,
+    hasMore,
+    error,
+    refreshFeed,
+    loadMore,
+    updateRide,
+    deleteRide,
+    reactToRide,
+    commentOnRide
+  };
 }
+
